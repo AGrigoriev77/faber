@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { assertNever } from '../fp/types.ts'
 
 // --- Types ---
 
@@ -62,5 +63,7 @@ export const printMessage = (msg: UiMessage): void => {
     case 'info':
       console.log(msg.text)
       break
+    default:
+      return assertNever(msg)
   }
 }

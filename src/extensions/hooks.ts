@@ -1,5 +1,6 @@
 import { ok, err } from 'neverthrow'
 import type { Result } from 'neverthrow'
+import { assertNever } from '../fp/types.ts'
 
 // --- Discriminated union for conditions ---
 
@@ -75,6 +76,8 @@ export const evaluateCondition = (cond: HookCondition, ctx: ConditionContext): b
 
     case 'env_not_equals':
       return (process.env[cond.varName] ?? '') !== cond.value
+    default:
+      return assertNever(cond)
   }
 }
 
