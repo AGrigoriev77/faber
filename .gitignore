@@ -25,6 +25,24 @@ Thumbs.db
 *.swp
 *.swo
 
+# Generated agent commands (created by faber init --ai <agent>)
+.claude/commands/
+.github/agents/
+.gemini/commands/
+.cursor/commands/
+.agents/commands/
+.augment/rules/
+.bob/commands/
+.codebuddy/commands/
+.kilocode/rules/
+.opencode/command/
+.amazonq/prompts/
+.qoder/commands/
+.qwen/commands/
+.roo/rules/
+.shai/commands/
+.windsurf/workflows/
+
 # Environment
 .env
 .env.*
