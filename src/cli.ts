@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import { AGENTS } from './core/agents.ts'
-import { validateInitOptions, resolveProjectPath } from './commands/init.ts'
+import { validateInitOptions, resolveProjectPath, runInit } from './commands/init.ts'
 import { formatVersionInfo } from './commands/version.ts'
 import { formatCheckResult } from './commands/check.ts'
 import { formatSuccess, formatError } from './core/ui.ts'
@@ -40,11 +40,29 @@ export const createProgram = (): Command => {
         githubToken: opts.githubToken,
       })
 
-      result.match(
-        (validOpts) => {
-          const projectPath = resolveProjectPath(validOpts.projectName, validOpts.here, process.cwd())
-          console.log(formatSuccess(`Initializing faber project at ${projectPath}`))
-          // TODO: download templates, extract, setup git, install skills
+      if (result.isErr()) {
+        console.error(formatError(result.error.message, result.error.tag))
+        process.exit(1)
+        return
+      }
+
+      const validOpts = result.value
+      const projectPath = resolveProjectPath(validOpts.projectName, validOpts.here, process.cwd())
+      console.log(formatSuccess(`Initializing faber project at ${projectPath}...`))
+
+      const initResult = await runInit({
+        projectPath,
+        ai: validOpts.ai,
+        script: validOpts.script,
+        noGit: validOpts.noGit,
+        aiSkills: validOpts.aiSkills,
+      })
+
+      initResult.match(
+        (meta) => {
+          console.log(formatSuccess(`Created ${meta.filesCreated} files`))
+          if (meta.agent) console.log(formatSuccess(`Agent: ${meta.agent}`))
+          console.log(formatSuccess('Done! Run "faber check" to verify your setup.'))
         },
         (error) => {
           console.error(formatError(error.message, error.tag))
