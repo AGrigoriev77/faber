@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Coverage & testing
+coverage/
+.stryker-tmp/
+reports/
+
+# Drafts & planning (not shipped)
+DRAFT-*.md
+PLAN.md
+CLAUDE.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
