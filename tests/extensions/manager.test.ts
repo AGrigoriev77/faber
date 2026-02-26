@@ -164,7 +164,7 @@ const makeManifest = (overrides: Partial<Manifest> = {}): Manifest => ({
     version: '1.2.3',
     description: 'A test extension',
   },
-  requires: { speckitVersion: '>=0.1.0' },
+  requires: { faberVersion: '>=0.1.0' },
   provides: { commands: [{ name: 'test-cmd', file: 'commands/test.md' }] },
   hooks: {},
   ...overrides,
@@ -267,7 +267,7 @@ scripts:
 
 Body`
     const result = renderCommandForAgent(sourceWithScripts, 'claude', markdownFormat, 'my-ext')
-    expect(result.content).toContain('.specify/scripts/bash/run.sh')
+    expect(result.content).toContain('.faber/scripts/bash/run.sh')
     expect(result.content).not.toContain('../../scripts/')
   })
 })
@@ -275,15 +275,15 @@ Body`
 // --- extensionDir ---
 
 describe('extensionDir', () => {
-  it('joins project root with .specify/extensions/<id>', () => {
+  it('joins project root with .faber/extensions/<id>', () => {
     const result = extensionDir('/home/user/project', 'jira-sync')
-    expect(result).toBe('/home/user/project/.specify/extensions/jira-sync')
+    expect(result).toBe('/home/user/project/.faber/extensions/jira-sync')
   })
 
   it('handles trailing slash in project root', () => {
     const result = extensionDir('/home/user/project/', 'my-ext')
     // path.join normalizes
-    expect(result).toContain('.specify/extensions/my-ext')
+    expect(result).toContain('.faber/extensions/my-ext')
   })
 })
 

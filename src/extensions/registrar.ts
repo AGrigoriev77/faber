@@ -69,7 +69,7 @@ export const renderFrontmatter = (fm: Frontmatter): string => {
 }
 
 export const renderMarkdownCommand = (fm: Frontmatter, body: string, extId: string): string => {
-  const context = `\n<!-- Extension: ${extId} -->\n<!-- Config: .specify/extensions/${extId}/ -->\n`
+  const context = `\n<!-- Extension: ${extId} -->\n<!-- Config: .faber/extensions/${extId}/ -->\n`
   return renderFrontmatter(fm) + context + body
 }
 
@@ -83,7 +83,7 @@ export const renderTomlCommand = (fm: Frontmatter, body: string, extId: string):
   }
 
   lines.push(`# Extension: ${extId}`)
-  lines.push(`# Config: .specify/extensions/${extId}/`)
+  lines.push(`# Config: .faber/extensions/${extId}/`)
   lines.push('')
   lines.push('prompt = """')
   lines.push(body)
@@ -102,7 +102,7 @@ export const adjustScriptPaths = (fm: Frontmatter): Frontmatter => {
   const adjusted: Record<string, string> = {}
   for (const [key, value] of Object.entries(scripts as Record<string, string>)) {
     adjusted[key] = value.startsWith('../../scripts/')
-      ? `.specify/scripts/${value.slice(14)}`
+      ? `.faber/scripts/${value.slice(14)}`
       : value
   }
 

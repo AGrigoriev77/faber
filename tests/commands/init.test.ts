@@ -106,10 +106,10 @@ describe('runInit', () => {
     expect((await readdir(dir)).length).toBeGreaterThan(0)
   })
 
-  it('copies template files into .specify/templates/', async () => {
+  it('copies template files into .faber/templates/', async () => {
     const dir = join(tmp, 'proj')
     await init(dir)
-    const files = await readdir(join(dir, '.specify', 'templates'))
+    const files = await readdir(join(dir, '.faber', 'templates'))
     expect(files).toContain('spec-template.md')
     expect(files).toContain('plan-template.md')
     expect(files).toContain('tasks-template.md')
@@ -171,6 +171,6 @@ describe('runInit', () => {
   it('works in existing directory (--here)', async () => {
     const result = await init(tmp)
     expect(result.isOk()).toBe(true)
-    expect(await readdir(join(tmp, '.specify'))).toContain('templates')
+    expect(await readdir(join(tmp, '.faber'))).toContain('templates')
   })
 })

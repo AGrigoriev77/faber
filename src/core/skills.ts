@@ -42,7 +42,7 @@ export const buildSkillFrontmatter = (
   return {
     name: skillName(commandName),
     description: desc,
-    compatibility: `Requires faber project structure (.specify/ directory)`,
+    compatibility: `Requires faber project structure (.faber/ directory)`,
     metadata: {
       author: SKILL_PREFIX,
       source: sourcePath,

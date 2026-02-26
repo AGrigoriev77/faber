@@ -100,7 +100,7 @@ const createProjectDir = (ctx: InitContext): ResultAsync<InitContext, InitError>
   wrap(() => mkdir(ctx.opts.projectPath, { recursive: true })).map(() => ctx)
 
 const copyTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
-  const templatesDir = join(ctx.opts.projectPath, '.specify', 'templates')
+  const templatesDir = join(ctx.opts.projectPath, '.faber', 'templates')
 
   return wrap(() => mkdir(templatesDir, { recursive: true }))
     .andThen(() => ResultAsync.fromPromise(

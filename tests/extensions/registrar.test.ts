@@ -133,7 +133,7 @@ describe('renderMarkdownCommand', () => {
 
   it('includes config path in context', () => {
     const result = renderMarkdownCommand({}, 'body', 'jira')
-    expect(result).toContain('<!-- Config: .specify/extensions/jira/ -->')
+    expect(result).toContain('<!-- Config: .faber/extensions/jira/ -->')
   })
 })
 
@@ -183,14 +183,14 @@ describe('convertArgPlaceholder', () => {
 // --- adjustScriptPaths ---
 
 describe('adjustScriptPaths', () => {
-  it('rewrites ../../scripts/ to .specify/scripts/', () => {
+  it('rewrites ../../scripts/ to .faber/scripts/', () => {
     const fm = {
       scripts: { run: '../../scripts/bash/run.sh', check: '../../scripts/check.sh' },
     }
     const result = adjustScriptPaths(fm)
     const scripts = result['scripts'] as Record<string, string>
-    expect(scripts['run']).toBe('.specify/scripts/bash/run.sh')
-    expect(scripts['check']).toBe('.specify/scripts/check.sh')
+    expect(scripts['run']).toBe('.faber/scripts/bash/run.sh')
+    expect(scripts['check']).toBe('.faber/scripts/check.sh')
   })
 
   it('does not mutate original', () => {

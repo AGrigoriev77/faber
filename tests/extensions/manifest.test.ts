@@ -14,10 +14,10 @@ extension:
   version: "1.0.0"
   description: A test extension
 requires:
-  speckit_version: ">=1.0.0"
+  faber_version: ">=1.0.0"
 provides:
   commands:
-    - name: speckit.my-extension.run
+    - name: faber.my-extension.run
       file: commands/run.md
 `
 
@@ -30,11 +30,11 @@ const validData = {
     description: 'A test extension',
   },
   requires: {
-    speckit_version: '>=1.0.0',
+    faber_version: '>=1.0.0',
   },
   provides: {
     commands: [
-      { name: 'speckit.my-extension.run', file: 'commands/run.md' },
+      { name: 'faber.my-extension.run', file: 'commands/run.md' },
     ],
   },
 }
@@ -76,7 +76,7 @@ describe('validateManifest', () => {
     expect(manifest.extension.name).toBe('My Extension')
     expect(manifest.extension.version).toBe('1.0.0')
     expect(manifest.extension.description).toBe('A test extension')
-    expect(manifest.requires.speckitVersion).toBe('>=1.0.0')
+    expect(manifest.requires.faberVersion).toBe('>=1.0.0')
     expect(manifest.provides.commands).toHaveLength(1)
   })
 
@@ -134,11 +134,11 @@ describe('validateManifest', () => {
     expectFieldError(result, 'extension.version')
   })
 
-  it('rejects missing requires.speckit_version', () => {
+  it('rejects missing requires.faber_version', () => {
     const data = { ...validData, requires: {} }
     const result = validateManifest(data)
     expect(result.isErr()).toBe(true)
-    expectFieldError(result, 'requires.speckit_version')
+    expectFieldError(result, 'requires.faber_version')
   })
 
   it('rejects missing provides.commands', () => {
@@ -168,7 +168,7 @@ describe('validateManifest', () => {
   it('rejects command without file', () => {
     const data = {
       ...validData,
-      provides: { commands: [{ name: 'speckit.ext.cmd' }] },
+      provides: { commands: [{ name: 'faber.ext.cmd' }] },
     }
     const result = validateManifest(data)
     expect(result.isErr()).toBe(true)
@@ -203,8 +203,8 @@ describe('validateManifest', () => {
       ...validData,
       provides: {
         commands: [
-          { name: 'speckit.my-extension.run', file: 'run.md' },
-          { name: 'speckit.my-extension.check', file: 'check.md' },
+          { name: 'faber.my-extension.run', file: 'run.md' },
+          { name: 'faber.my-extension.check', file: 'check.md' },
         ],
       },
     }

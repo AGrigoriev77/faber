@@ -108,7 +108,7 @@ export const renderCommandForAgent = (
 // --- Path helpers ---
 
 export const extensionDir = (projectRoot: string, extensionId: string): string =>
-  join(projectRoot, '.specify', 'extensions', extensionId)
+  join(projectRoot, '.faber', 'extensions', extensionId)
 
 export const commandTargetPath = (projectRoot: string, agentFormat: AgentFormat, commandName: string): string =>
   join(projectRoot, agentFormat.dir, `${commandName}${agentFormat.extension}`)

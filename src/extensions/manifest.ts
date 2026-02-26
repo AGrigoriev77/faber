@@ -5,7 +5,7 @@ import type { Result } from 'neverthrow'
 const SCHEMA_VERSION = '1.0'
 const EXTENSION_ID_RE = /^[a-z0-9-]+$/
 const SEMVER_RE = /^\d+\.\d+\.\d+$/
-const COMMAND_NAME_RE = /^speckit\.[a-z0-9-]+\.[a-z0-9-]+$/
+const COMMAND_NAME_RE = /^faber\.[a-z0-9-]+\.[a-z0-9-]+$/
 
 export interface ManifestCommand {
   readonly name: string
@@ -21,7 +21,7 @@ export interface Manifest {
     readonly description: string
   }
   readonly requires: {
-    readonly speckitVersion: string
+    readonly faberVersion: string
   }
   readonly provides: {
     readonly commands: ReadonlyArray<ManifestCommand>
@@ -95,9 +95,9 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
   if (!requires || typeof requires !== 'object') {
     return err(fieldErr('requires', 'Missing required field'))
   }
-  const speckitVersion = requires['speckit_version'] as string | undefined
-  if (!speckitVersion) {
-    return err(fieldErr('requires.speckit_version', 'Missing required field'))
+  const faberVersion = requires['faber_version'] as string | undefined
+  if (!faberVersion) {
+    return err(fieldErr('requires.faber_version', 'Missing required field'))
   }
 
   // provides
@@ -124,7 +124,7 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
       return err(fieldErr(`commands[${i}].file`, 'Missing required field'))
     }
     if (!COMMAND_NAME_RE.test(cmdName)) {
-      return err(fieldErr(`commands[${i}].name`, `Invalid format: "${cmdName}". Must match speckit.{ext}.{cmd}`))
+      return err(fieldErr(`commands[${i}].name`, `Invalid format: "${cmdName}". Must match faber.{ext}.{cmd}`))
     }
     validatedCommands.push({ name: cmdName, file: cmdFile })
   }
@@ -140,7 +140,7 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
       description: extDescription,
     },
     requires: {
-      speckitVersion,
+      faberVersion,
     },
     provides: {
       commands: validatedCommands,

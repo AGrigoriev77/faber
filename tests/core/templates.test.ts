@@ -210,6 +210,6 @@ describe('isExecutableScript', () => {
   })
 
   it('returns true for files in nested paths', () => {
-    expect(isExecutableScript('.specify/scripts/bash/check.sh')).toBe(true)
+    expect(isExecutableScript('.faber/scripts/bash/check.sh')).toBe(true)
   })
 })
