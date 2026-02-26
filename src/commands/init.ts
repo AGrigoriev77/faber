@@ -148,7 +148,7 @@ const renderAgentCommands = (ctx: InitContext): ResultAsync<InitContext, InitErr
         let rendered = 0
         for (const file of files) {
           if (!file.endsWith('.md')) continue
-          const name = basename(file, '.md')
+          const name = `faber.${basename(file, '.md')}`
           const source = await readFile(join(commandsSourceDir, file), 'utf-8')
           const cmd = renderCommandForAgent(source, ctx.opts.ai, format, name)
           await mkdir(dirname(join(ctx.opts.projectPath, cmd.relativePath)), { recursive: true })

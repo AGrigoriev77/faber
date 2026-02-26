@@ -52,4 +52,33 @@ describe('createProgram', () => {
     const noGitOpt = initCmd.options.find((o) => o.long === '--no-git')
     expect(noGitOpt).toBeDefined()
   })
+
+  it('--no-git flag is correctly parsed as noGit: true', async () => {
+    const program = createProgram()
+    const initCmd = program.commands.find((c) => c.name() === 'init')!
+
+    let capturedOpts: Record<string, unknown> | undefined
+    // Replace action to capture parsed options without running init
+    initCmd.action((_name: string, opts: Record<string, unknown>) => {
+      capturedOpts = opts
+    })
+
+    await program.parseAsync(['node', 'faber', 'init', 'test-proj', '--no-git', '--ai', 'claude'])
+    expect(capturedOpts).toBeDefined()
+    expect(capturedOpts!.git).toBe(false)
+  })
+
+  it('git defaults to true when --no-git is not passed', async () => {
+    const program = createProgram()
+    const initCmd = program.commands.find((c) => c.name() === 'init')!
+
+    let capturedOpts: Record<string, unknown> | undefined
+    initCmd.action((_name: string, opts: Record<string, unknown>) => {
+      capturedOpts = opts
+    })
+
+    await program.parseAsync(['node', 'faber', 'init', 'test-proj', '--ai', 'claude'])
+    expect(capturedOpts).toBeDefined()
+    expect(capturedOpts!.git).toBe(true)
+  })
 })

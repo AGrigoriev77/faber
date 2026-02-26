@@ -34,7 +34,7 @@ export const createProgram = (): Command => {
         ai: opts.ai ?? '',
         script: opts.script,
         here: opts.here,
-        noGit: opts.noGit ?? false,
+        noGit: !opts.git,
         force: opts.force,
         aiSkills: opts.aiSkills,
         githubToken: opts.githubToken,

@@ -116,19 +116,19 @@ describe('runInit', () => {
     expect(files).toContain('constitution-template.md')
   })
 
-  it('creates .claude/commands/ with .md files', async () => {
+  it('creates .claude/commands/ with faber-prefixed .md files', async () => {
     const dir = join(tmp, 'proj')
     await init(dir)
     const files = await readdir(join(dir, '.claude', 'commands'))
     expect(files.length).toBeGreaterThan(0)
-    expect(files.every((f) => f.endsWith('.md'))).toBe(true)
+    expect(files.every((f) => f.startsWith('faber.') && f.endsWith('.md'))).toBe(true)
   })
 
-  it('creates .gemini/commands/ with .toml files', async () => {
+  it('creates .gemini/commands/ with faber-prefixed .toml files', async () => {
     const dir = join(tmp, 'proj')
     await init(dir, { ai: 'gemini' })
     const files = await readdir(join(dir, '.gemini', 'commands'))
-    expect(files.some((f) => f.endsWith('.toml'))).toBe(true)
+    expect(files.some((f) => f.startsWith('faber.') && f.endsWith('.toml'))).toBe(true)
   })
 
   it('command files have content', async () => {
