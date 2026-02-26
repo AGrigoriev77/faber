@@ -6,7 +6,7 @@ A TypeScript rewrite of [spec-kit](https://github.com/idof/spec-kit) from scratc
 
 ## What is it?
 
-faber turns a natural language feature description into a full development cycle: specification, architectural plan, dependency-ordered tasks, tests, and code. Works with 16 AI agents (Claude, Copilot, Gemini, Cursor, and more).
+faber turns a natural language feature description into a full development cycle: specification, architectural plan, dependency-ordered tasks, tests, and code. Works with 19 AI agents (Claude, Copilot, Gemini, Cursor, and more).
 
 Instead of jumping straight to code, faber forces you to think first: what are we building, how are we building it, what are the edge cases, what are the tests. The AI agent receives structured context and generates code from a precise specification, not a vague prompt.
 
@@ -17,7 +17,7 @@ Instead of jumping straight to code, faber forces you to think first: what are w
 - **Tests**: optional → mandatory (TDD gate: `[TEST]` tasks block `[IMPL]`)
 - **Templates**: extended — added Failure Modes, Invariants, State Machines, Pre/Post Conditions, Idempotency, Complexity Budget, property-based tests
 - **New command `/faber.test`**: test scaffolding generation from acceptance criteria, invariants, failure modes, and state machines
-- **Agents**: 19 → 16 supported formats
+- **Agents**: 19 supported formats (16 with unique command directories)
 
 ## Quick Start
 

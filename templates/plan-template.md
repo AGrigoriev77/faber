@@ -94,6 +94,69 @@ ios/ or android/
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
 
+## Domain Categories & Functors *(include if project has 5+ entities)*
+
+<!--
+  Group entities by domain category and identify functors (transformations between categories).
+  This prevents a flat entity list from becoming unmanageable.
+-->
+
+| Category | Entities | Functor (transforms to) |
+|----------|----------|------------------------|
+| [e.g., Identity] | User, Session, Role | Auth → Permission |
+| [e.g., Commerce] | Order, Payment, Cart | Cart → Order → Receipt |
+| [e.g., Content] | Post, Comment, Media | Draft → Published |
+
+## Data Flow Map *(mandatory)*
+
+<!--
+  Trace data transformations through the system.
+  Show WHERE each component sits and what errors are possible at each step.
+-->
+
+```
+[Input Source] → [Validation] → [Transform] → [Business Logic] → [Persistence] → [Response]
+                    ↓ (fail)                      ↓ (fail)           ↓ (fail)
+                ValidationError              BusinessError        StorageError
+```
+
+## Complexity Budget *(mandatory)*
+
+<!--
+  Contract on algorithmic complexity for critical operations.
+  AI agent uses these constraints when choosing algorithms and data structures.
+-->
+
+| Operation | Max Complexity | Data Scale | Rationale |
+|-----------|---------------|------------|-----------|
+| [e.g., Search users] | O(n log n) | [e.g., 100K] | [e.g., Must respond < 200ms] |
+| [e.g., List items] | O(n) | [e.g., 10K per user] | [e.g., Pagination required] |
+| [e.g., Export report] | O(n) | [e.g., 1M records] | [e.g., Stream, don't load all] |
+
+## Make Illegal States Unrepresentable *(mandatory)*
+
+<!--
+  Type design principle: invalid states should be impossible by construction.
+  Use discriminated unions, not boolean flags + nullable fields.
+-->
+
+**Pattern**:
+
+```
+WRONG: Entity { status: string, data: T | null, error: string | null }
+  → status="success" but data=null — illegal state possible
+
+RIGHT: Entity = Pending {} | Success { data: T } | Failed { error: string }
+  → illegal state impossible by construction
+```
+
+**Apply to key entities**:
+
+| Entity | Wrong (allows illegal states) | Right (illegal states impossible) |
+|--------|------------------------------|-----------------------------------|
+| [Entity 1] | [boolean flags + nullables] | [discriminated union design] |
+| [Entity 2] | [boolean flags + nullables] | [discriminated union design] |
+
 ## Complexity Tracking
 
 > **Fill ONLY if Constitution Check has violations that must be justified**

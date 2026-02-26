@@ -18,6 +18,7 @@
   "devDependencies": {
     "@fast-check/vitest": "^0.2.4",
     "@stryker-mutator/core": "^9.5.1",
+    "@stryker-mutator/vitest-runner": "^9.5.1",
     "@types/bun": "latest",
     "@types/node": "^25.3.1",
     "@types/yauzl-promise": "^4.0.1",

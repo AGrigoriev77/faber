@@ -75,6 +75,85 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
+## Test Strategy *(mandatory)*
+
+<!--
+  Map acceptance scenarios to concrete test types.
+  Every scenario above must appear in at least one row.
+-->
+
+| Scenario | Test Type | Given / When / Then |
+|----------|-----------|---------------------|
+| [US1-S1] | Unit | Given [state], When [action], Then [assertion] |
+| [US1-S2] | Integration | Given [state], When [action], Then [assertion] |
+
+## Failure Modes *(mandatory)*
+
+<!--
+  For each component that can fail, describe the failure, its impact,
+  and the mitigation. Each row becomes a [TEST] task.
+-->
+
+| Component | Failure | Impact | Mitigation |
+|-----------|---------|--------|------------|
+| [Component 1] | [How it fails] | [User-visible impact] | [How system recovers] |
+| [Component 2] | [How it fails] | [User-visible impact] | [How system recovers] |
+
+## Invariants *(mandatory)*
+
+<!--
+  Business rules that must ALWAYS hold, regardless of input.
+  Each invariant becomes a property-based test on random data.
+-->
+
+- **INV-1**: [Rule that must always be true, e.g., "User.balance >= 0"]
+- **INV-2**: [Rule that must always be true, e.g., "Order.items.length > 0 when status != draft"]
+- **INV-3**: [Conservation law, e.g., "sum of all account balances = constant"]
+
+## State Machines *(include if feature has entities with lifecycle)*
+
+<!--
+  Explicit states, transitions, and FORBIDDEN transitions.
+  Each forbidden transition becomes a [TEST] task.
+-->
+
+```
+[initial] → [state-A] → [state-B] → [final]
+                ↓
+           [cancelled]
+
+Forbidden transitions:
+- cancelled → state-B (NEVER)
+- final → initial (NEVER)
+- initial → final (MUST go through state-A)
+```
+
+## Pre/Post Conditions *(include if feature has critical operations)*
+
+<!--
+  Design by Contract: what must be true BEFORE and AFTER each critical operation.
+  Each condition becomes a [TEST] task.
+-->
+
+### Contract: [operationName](params)
+
+- **Pre**: [condition that must hold before, e.g., "amount > 0"]
+- **Pre**: [condition that must hold before, e.g., "from != to"]
+- **Post**: [condition that must hold after, e.g., "from.balance == old(from.balance) - amount"]
+- **Post**: [conservation law, e.g., "from.balance + to.balance == old(from.balance) + old(to.balance)"]
+
+## Idempotency Requirements *(include if feature has retriable operations)*
+
+<!--
+  Any operation that may be called more than once (network, queues, retries).
+  Each idempotent operation becomes a [TEST] task: call twice → same result, no side effects.
+-->
+
+| Operation | Idempotent? | Key | Behavior on retry |
+|-----------|-------------|-----|-------------------|
+| [Operation 1] | Yes | [unique key] | Return existing result |
+| [Operation 2] | No | — | [Dedup strategy required] |
+
 ## Requirements *(mandatory)*
 
 <!--
