@@ -77,18 +77,27 @@ The command reads the specification and creates test scaffolding:
 
 ## Supported AI Agents
 
-| Agent | Commands directory | Format |
-|-------|-------------------|--------|
-| Claude | `.claude/commands/` | Markdown |
-| GitHub Copilot | `.github/agents/` | Markdown |
-| Gemini | `.gemini/commands/` | TOML |
-| Cursor | `.cursor/commands/` | Markdown |
-| Amazon Q | `.amazonq/prompts/` | Markdown |
-| Windsurf | `.windsurf/workflows/` | Markdown |
-| Augment | `.augment/rules/` | Markdown |
-| Roo | `.roo/rules/` | Markdown |
-| Qwen | `.qwen/commands/` | TOML |
-| and 7 more... | | |
+| Agent | ID | Commands directory | Format |
+|-------|----|--------------------|--------|
+| Claude Code | `claude` | `.claude/commands/` | Markdown |
+| GitHub Copilot | `copilot` | `.github/agents/` | Markdown |
+| Gemini CLI | `gemini` | `.gemini/commands/` | TOML |
+| Cursor | `cursor` | `.cursor/commands/` | Markdown |
+| Amazon Q Developer | `q` | `.amazonq/prompts/` | Markdown |
+| Windsurf | `windsurf` | `.windsurf/workflows/` | Markdown |
+| Amp | `amp` | `.agents/commands/` | Markdown |
+| Augment (Auggie) | `auggie` | `.augment/rules/` | Markdown |
+| IBM Bob | `bob` | `.bob/commands/` | Markdown |
+| CodeBuddy | `codebuddy` | `.codebuddy/commands/` | Markdown |
+| Kilo Code | `kilocode` | `.kilocode/rules/` | Markdown |
+| opencode | `opencode` | `.opencode/command/` | Markdown |
+| Qoder CLI | `qodercli` | `.qoder/commands/` | Markdown |
+| Qwen Code | `qwen` | `.qwen/commands/` | TOML |
+| Roo Code | `roo` | `.roo/rules/` | Markdown |
+| SHAI | `shai` | `.shai/commands/` | Markdown |
+| Antigravity | `agy` | — | — |
+| Codex CLI | `codex` | — | — |
+| Generic | `generic` | — | — |
 
 ## What `faber init` generates
 
