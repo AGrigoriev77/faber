@@ -70,6 +70,45 @@ describe('ExtensionId', () => {
       expect(extensionId(raw).isErr()).toBe(true)
     }
   })
+
+  test.prop([fc.string()])('never throws — always returns Result', (raw) => {
+    const result = extensionId(raw)
+    expect(result.isOk() || result.isErr()).toBe(true)
+  })
+
+  test.prop([fc.stringMatching(/^[a-z0-9-]+$/).filter(s => s.length > 0)])(
+    'accepts any non-empty string matching ^[a-z0-9-]+$',
+    (raw) => {
+      expect(extensionId(raw).isOk()).toBe(true)
+    },
+  )
+
+  test.prop([fc.stringMatching(/^[a-z0-9-]+$/).filter(s => s.length > 0)])(
+    'roundtrip — ok value equals input',
+    (raw) => {
+      extensionId(raw).match(
+        (v) => expect(v).toBe(raw),
+        () => { throw new Error('expected ok') },
+      )
+    },
+  )
+
+  test.prop([fc.string()])('err always contains field "extensionId"', (raw) => {
+    extensionId(raw).match(
+      () => {},
+      (e) => expect(e.field).toBe('extensionId'),
+    )
+  })
+
+  test.prop([fc.stringMatching(/^[a-z0-9-]+$/).filter(s => s.length > 0)])(
+    'idempotent — validating an already-valid value succeeds',
+    (raw) => {
+      extensionId(raw).match(
+        (branded) => expect(extensionId(branded).isOk()).toBe(true),
+        () => {},
+      )
+    },
+  )
 })
 
 describe('SemVer', () => {
@@ -97,6 +136,51 @@ describe('SemVer', () => {
     const raw = `${major}.${minor}.${patch}`
     expect(semVer(raw).isOk()).toBe(true)
   })
+
+  test.prop([fc.string()])('never throws — always returns Result', (raw) => {
+    const result = semVer(raw)
+    expect(result.isOk() || result.isErr()).toBe(true)
+  })
+
+  test.prop([fc.nat(), fc.nat(), fc.nat()])('roundtrip — ok value equals M.m.p string', (major, minor, patch) => {
+    const raw = `${major}.${minor}.${patch}`
+    semVer(raw).match(
+      (v) => expect(v).toBe(raw),
+      () => { throw new Error('expected ok') },
+    )
+  })
+
+  test.prop([fc.string().filter(s => (s.match(/\./g) ?? []).length !== 2)])(
+    'rejects strings without exactly 2 dots',
+    (raw) => {
+      expect(semVer(raw).isErr()).toBe(true)
+    },
+  )
+
+  test.prop([fc.nat(), fc.nat(), fc.nat(), fc.stringMatching(/^[a-z]+$/)])(
+    'rejects pre-release suffixes',
+    (major, minor, patch, suffix) => {
+      expect(semVer(`${major}.${minor}.${patch}-${suffix}`).isErr()).toBe(true)
+    },
+  )
+
+  test.prop([fc.string()])('err always contains field "semVer"', (raw) => {
+    semVer(raw).match(
+      () => {},
+      (e) => expect(e.field).toBe('semVer'),
+    )
+  })
+
+  test.prop([fc.nat(), fc.nat(), fc.nat()])(
+    'idempotent — validating an already-valid value succeeds',
+    (major, minor, patch) => {
+      const raw = `${major}.${minor}.${patch}`
+      semVer(raw).match(
+        (branded) => expect(semVer(branded).isOk()).toBe(true),
+        () => {},
+      )
+    },
+  )
 })
 
 describe('AbsolutePath', () => {
@@ -128,4 +212,46 @@ describe('AbsolutePath', () => {
       expect(absolutePath(raw).isErr()).toBe(true)
     }
   })
+
+  test.prop([fc.string()])('never throws — always returns Result', (raw) => {
+    const result = absolutePath(raw)
+    expect(result.isOk() || result.isErr()).toBe(true)
+  })
+
+  test.prop([fc.string()])('accepts any string starting with /', (raw) => {
+    expect(absolutePath(`/${raw}`).isOk()).toBe(true)
+  })
+
+  test.prop([fc.constantFrom(...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')), fc.string()])(
+    'accepts any string starting with drive letter + colon + backslash',
+    (letter, rest) => {
+      expect(absolutePath(`${letter}:\\${rest}`).isOk()).toBe(true)
+    },
+  )
+
+  test.prop([fc.string()])('roundtrip — ok value equals input', (raw) => {
+    const input = `/${raw}`
+    absolutePath(input).match(
+      (v) => expect(v).toBe(input),
+      () => { throw new Error('expected ok') },
+    )
+  })
+
+  test.prop([fc.string()])('err always contains field "absolutePath"', (raw) => {
+    absolutePath(raw).match(
+      () => {},
+      (e) => expect(e.field).toBe('absolutePath'),
+    )
+  })
+
+  test.prop([fc.string()])(
+    'idempotent — validating an already-valid value succeeds',
+    (raw) => {
+      const input = `/${raw}`
+      absolutePath(input).match(
+        (branded) => expect(absolutePath(branded).isOk()).toBe(true),
+        () => {},
+      )
+    },
+  )
 })

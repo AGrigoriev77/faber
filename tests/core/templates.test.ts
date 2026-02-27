@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { test } from '@fast-check/vitest'
 import fc from 'fast-check'
 import { join } from 'node:path'
-import { mkdtemp, rm, writeFile as nodeWriteFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile as nodeWriteFile, mkdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 import {
   assetName,
   flattenPrefix,
@@ -285,6 +289,79 @@ describe('extractZip', () => {
     const result = await extractZip(badZip, tmpDir)
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe('zip')
+  })
+
+  it('extracts valid zip and returns file list', async () => {
+    // Create source files
+    const srcDir = join(tmpDir, 'src')
+    const subDir = join(srcDir, 'sub')
+    await mkdir(subDir, { recursive: true })
+    await nodeWriteFile(join(srcDir, 'hello.txt'), 'Hello World')
+    await nodeWriteFile(join(subDir, 'nested.txt'), 'Nested content')
+
+    // Create zip using system zip command
+    const zipPath = join(tmpDir, 'test.zip')
+    await execFileAsync('zip', ['-r', zipPath, 'hello.txt', 'sub/nested.txt'], { cwd: srcDir })
+
+    // Extract
+    const destDir = join(tmpDir, 'dest')
+    await mkdir(destDir)
+    const result = await extractZip(zipPath, destDir)
+
+    expect(result.isOk()).toBe(true)
+    const files = result._unsafeUnwrap()
+    expect(files).toContain('hello.txt')
+    expect(files).toContain('sub/nested.txt')
+
+    // Verify extracted content
+    const content = await readFile(join(destDir, 'hello.txt'), 'utf-8')
+    expect(content).toBe('Hello World')
+    const nested = await readFile(join(destDir, 'sub', 'nested.txt'), 'utf-8')
+    expect(nested).toBe('Nested content')
+  })
+
+  it('extracts zip with directory prefix and flattens it', async () => {
+    // Create source files inside a prefix directory
+    const srcDir = join(tmpDir, 'wrapper')
+    const prefixDir = join(srcDir, 'template-v1')
+    await mkdir(prefixDir, { recursive: true })
+    await nodeWriteFile(join(prefixDir, 'README.md'), '# Hello')
+    await nodeWriteFile(join(prefixDir, 'config.json'), '{}')
+
+    // Create zip from wrapper dir (entries will be template-v1/README.md, etc.)
+    const zipPath = join(tmpDir, 'prefixed.zip')
+    await execFileAsync('zip', ['-r', zipPath, 'template-v1'], { cwd: srcDir })
+
+    // Extract
+    const destDir = join(tmpDir, 'dest2')
+    await mkdir(destDir)
+    const result = await extractZip(zipPath, destDir)
+
+    expect(result.isOk()).toBe(true)
+    const files = result._unsafeUnwrap()
+    // flattenPrefix should strip 'template-v1/' prefix
+    expect(files).toContain('README.md')
+    expect(files).toContain('config.json')
+    expect(files.every((f) => !f.startsWith('template-v1/'))).toBe(true)
+  })
+
+  it('extracts zip and skips directory entries', async () => {
+    const srcDir = join(tmpDir, 'with-dirs')
+    const nested = join(srcDir, 'a', 'b')
+    await mkdir(nested, { recursive: true })
+    await nodeWriteFile(join(nested, 'deep.txt'), 'deep')
+
+    const zipPath = join(tmpDir, 'dirs.zip')
+    await execFileAsync('zip', ['-r', zipPath, '.'], { cwd: srcDir })
+
+    const destDir = join(tmpDir, 'dest3')
+    await mkdir(destDir)
+    const result = await extractZip(zipPath, destDir)
+
+    expect(result.isOk()).toBe(true)
+    const files = result._unsafeUnwrap()
+    // No entries should end with /
+    expect(files.every((f) => !f.endsWith('/'))).toBe(true)
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtemp, rm, readdir, readFile, stat } from 'node:fs/promises'
+import { mkdtemp, rm, readdir, readFile, stat, writeFile, chmod, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -278,5 +278,45 @@ describe('runInit', () => {
     const result = await init('/dev/null/impossible/project')
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe('fs')
+  })
+
+  it('makeExecutable: chmod is applied to pre-existing .sh files', async () => {
+    // Pre-create a .sh file with non-executable permissions
+    const shFile = join(tmp, 'deploy.sh')
+    await writeFile(shFile, '#!/bin/bash\necho deploy')
+    await chmod(shFile, 0o644)
+
+    // Verify it starts without execute bit
+    const before = await stat(shFile)
+    expect(before.mode & 0o111).toBe(0)
+
+    // Run init in --here mode — makeExecutable will find and chmod this file
+    await init(tmp)
+
+    // Verify execute bit was set
+    const after = await stat(shFile)
+    expect(after.mode & 0o111).toBeGreaterThan(0)
+  })
+
+  it('makeExecutable: chmod is applied to nested .bash files', async () => {
+    const scriptsDir = join(tmp, 'scripts')
+    await mkdir(scriptsDir, { recursive: true })
+    const bashFile = join(scriptsDir, 'run.bash')
+    await writeFile(bashFile, '#!/bin/bash\necho run')
+    await chmod(bashFile, 0o644)
+
+    await init(tmp)
+
+    const s = await stat(bashFile)
+    expect(s.mode & 0o111).toBeGreaterThan(0)
+  })
+
+  it('works with ai="" and here=true — no agent commands', async () => {
+    const result = await init(tmp, { ai: '' })
+    expect(result.isOk()).toBe(true)
+    if (result.isOk()) {
+      // Only template files + vscode (7), no commands
+      expect(result.value.filesCreated).toBe(7)
+    }
   })
 })
