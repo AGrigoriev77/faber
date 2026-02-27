@@ -9,6 +9,7 @@ export const SKILL_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
   ['specify', 'Create detailed specifications from natural language requirements'],
   ['plan', 'Generate a technical implementation plan from a specification'],
   ['tasks', 'Break down a plan into actionable development tasks with TDD markers'],
+  ['test', 'Generate test scaffolding from spec acceptance criteria, invariants, and failure modes'],
   ['implement', 'Execute all tasks following TDD red-green-refactor workflow'],
   ['analyze', 'Analyze consistency across specs, plans, and tasks'],
   ['clarify', 'Ask clarifying questions about ambiguous requirements'],

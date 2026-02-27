@@ -1,6 +1,10 @@
 ---
 description: Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts.
-handoffs: 
+handoffs:
+  - label: Generate Test Scaffolding
+    agent: faber.test
+    prompt: Generate test scaffolding from spec acceptance criteria
+    send: true
   - label: Analyze For Consistency
     agent: faber.analyze
     prompt: Run a project analysis for consistency
