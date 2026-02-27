@@ -5,6 +5,16 @@ import { formatVersionInfo } from './commands/version.ts'
 import { formatCheckResult } from './commands/check.ts'
 import { formatSuccess, formatError } from './core/ui.ts'
 import { checkTool } from './utils/git.ts'
+import {
+  runExtensionList,
+  runExtensionSearch,
+  runExtensionInfo,
+  runExtensionAdd,
+  runExtensionRemove,
+  runExtensionUpdate,
+  formatCommandError,
+} from './commands/extension/index.ts'
+import { emptyRegistry } from './extensions/registry.ts'
 
 const VERSION = '0.1.0'
 
@@ -97,6 +107,100 @@ export const createProgram = (): Command => {
     .action(async () => {
       // TODO: fetch latest release version from GitHub
       console.log(formatVersionInfo(VERSION, null))
+    })
+
+  // --- extension group ---
+  const extension = program
+    .command('extension')
+    .description('Manage faber extensions')
+
+  extension
+    .command('list')
+    .description('List installed extensions')
+    .action(async () => {
+      const result = await runExtensionList({ cwd: process.cwd() })
+      result.match(
+        (r) => console.log(r.formatted),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
+    })
+
+  extension
+    .command('add')
+    .description('Install an extension from a local directory')
+    .argument('<source>', 'Path to extension directory')
+    .option('--ai <agent>', `AI assistant for command rendering (${agentChoices})`)
+    .action(async (source: string, opts) => {
+      const result = await runExtensionAdd({ cwd: process.cwd(), source, ai: opts.ai })
+      result.match(
+        (r) => console.log(formatSuccess(`Installed ${r.id}@${r.version} (${r.filesCreated} files)`)),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
+    })
+
+  extension
+    .command('remove')
+    .description('Remove an installed extension')
+    .argument('<id>', 'Extension ID')
+    .option('--keep-config', 'Keep extension config files', false)
+    .action(async (id: string, opts) => {
+      const result = await runExtensionRemove({ cwd: process.cwd(), id, keepConfig: opts.keepConfig })
+      result.match(
+        (r) => console.log(formatSuccess(`Removed ${r.id}@${r.version}`)),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
+    })
+
+  extension
+    .command('search')
+    .description('Search available extensions in the catalog')
+    .option('--query <text>', 'Search query')
+    .option('--tag <tag>', 'Filter by tag')
+    .option('--author <author>', 'Filter by author')
+    .option('--verified', 'Show only verified extensions', false)
+    .action(async (opts) => {
+      // TODO: fetch catalog from network, for now use empty catalog
+      const catalog = { schemaVersion: '1.0', extensions: {} }
+      const result = runExtensionSearch({
+        catalog,
+        query: opts.query,
+        tag: opts.tag,
+        author: opts.author,
+        verifiedOnly: opts.verified,
+      })
+      result.match(
+        (r) => console.log(r.formatted),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
+    })
+
+  extension
+    .command('info')
+    .description('Show detailed information about an extension')
+    .argument('<id>', 'Extension ID')
+    .action(async (id: string) => {
+      // TODO: fetch catalog from network, for now use empty catalog
+      const catalog = { schemaVersion: '1.0', extensions: {} }
+      const registryResult = await import('./commands/extension/common.ts').then(m => m.loadRegistry(process.cwd()))
+      const registry = registryResult.isOk() ? registryResult.value : emptyRegistry()
+      const result = runExtensionInfo({ catalog, registry, id })
+      result.match(
+        (r) => console.log(r.formatted),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
+    })
+
+  extension
+    .command('update')
+    .description('Check for available extension updates')
+    .action(async () => {
+      // TODO: fetch catalog from network, for now use empty catalog
+      const catalog = { schemaVersion: '1.0', extensions: {} }
+      const result = await runExtensionUpdate({ cwd: process.cwd(), catalog })
+      result.match(
+        (r) => console.log(r.formatted),
+        (e) => { console.error(formatError(formatCommandError(e), e.tag)); process.exit(1) },
+      )
     })
 
   return program

@@ -71,7 +71,7 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 **CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
 
-**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the feature specification or if user requests TDD approach.
+**Tests are MANDATORY**: Every user story MUST have `[TEST]` tasks generated from acceptance criteria. Tests are written FIRST and must FAIL before implementation begins (TDD Gate). This is NON-NEGOTIABLE.
 
 ### Checklist Format (REQUIRED)
 
@@ -138,3 +138,50 @@ Every task MUST strictly follow this format:
   - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration
   - Each phase should be a complete, independently testable increment
 - **Final Phase**: Polish & Cross-Cutting Concerns
+
+### TDD Task Generation (MANDATORY)
+
+For EVERY user story acceptance criterion in spec.md:
+
+1. **Extract testable criteria** — each "Given/When/Then" or acceptance criterion → one `[TEST]` task
+2. **Generate test task** — format: `- [ ] TXXX [P] [USN] [TEST] Write test: {criterion description} in tests/{path}`
+3. **Place before implementation** — all `[TEST]` tasks appear BEFORE `[IMPL]` tasks within each user story phase
+4. **TDD Gate** — implementation tasks CANNOT begin until ALL `[TEST]` tasks in that phase are marked `[X]` and tests FAIL (red phase)
+
+Example mapping:
+```
+spec.md: "User can reset password via email"
+→ - [ ] T010 [P] [US1] [TEST] Write test: password reset sends email in tests/unit/test_password_reset.py
+→ - [ ] T011 [P] [US1] [TEST] Write integration test: full password reset flow in tests/integration/test_reset_flow.py
+```
+
+### Failure Mode Test Generation
+
+For EVERY row in the spec.md Failure Modes table:
+
+1. **Map failure → test** — each failure mode row → one `[TEST]` task
+2. **Format**: `- [ ] TXXX [P] [USN] [TEST] Write test: {component} {failure} → {mitigation} in tests/{path}`
+3. **Include in the phase** of the user story that owns the component
+
+Example mapping:
+```
+Failure Modes table: | Payment API | 500 error | Order stuck | Retry queue |
+→ - [ ] T015 [P] [US2] [TEST] Write test: Payment API returns 500 → order retries via queue in tests/integration/test_payment_retry.py
+```
+
+### Category-Aware Task Generation
+
+When plan.md contains a "Domain Categories & Functors" table:
+
+1. **Group tasks by domain category** — within each user story, organize tasks by the domain category they belong to
+2. **Respect functor boundaries** — transformations between categories (functors) get their own tasks
+3. **Order by dependency** — categories that are functor inputs come before categories that are functor outputs
+4. **Cross-category integration** — add explicit integration tasks where functors connect categories
+
+Example:
+```
+Category: Identity (User, Session) → Category: Commerce (Order, Cart)
+Functor: Auth → Permission
+
+→ Phase 3 tasks ordered: Identity models → Auth functor → Commerce models → Integration
+```

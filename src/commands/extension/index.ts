@@ -1,0 +1,7 @@
+export { runExtensionList, formatExtensionList } from './list.ts'
+export { runExtensionSearch, formatSearchResults, resolveCatalog } from './search.ts'
+export { runExtensionInfo, formatExtensionInfo } from './info.ts'
+export { runExtensionAdd } from './add.ts'
+export { runExtensionRemove } from './remove.ts'
+export { runExtensionUpdate, findAvailableUpdates, formatUpdateResults } from './update.ts'
+export { formatCommandError, type ExtensionCommandError } from './common.ts'

@@ -27,6 +27,51 @@
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
+### Error Handling Strategy
+
+<!--
+  Define how errors are handled at each architectural layer.
+  AI agent uses this to generate appropriate error handling code and tests.
+-->
+
+| Layer | Error Type | Handling Strategy |
+|-------|-----------|-------------------|
+| [e.g., Input validation] | [e.g., ValidationError] | [e.g., Return Result.err with field details, never throw] |
+| [e.g., Business logic] | [e.g., BusinessError] | [e.g., Discriminated union, propagate via .andThen()] |
+| [e.g., I/O / Network] | [e.g., IoError] | [e.g., try/catch at boundary, wrap in Result, retry if transient] |
+| [e.g., CLI / UI] | [e.g., All errors] | [e.g., .match() at top level, format for user, exit code] |
+
+### Functional Patterns
+
+<!--
+  When the constitution includes Functional-First Architecture (Article IV),
+  document the specific FP patterns this project will use.
+  Skip this section if the project does not use FP.
+-->
+
+**Core Pattern**: Pure Core + Impure Shell
+- Business logic lives in pure functions (same input → same output, no side effects)
+- Side effects isolated at boundaries via adapter functions
+
+**Result Type**: `Result<T, E>` for all fallible operations
+- Chain operations: `.andThen()`, `.map()`, `.mapErr()`
+- Terminal handling: `.match(onOk, onErr)` at CLI boundary
+- No try/catch in business logic — only in I/O adapters
+
+**Composition**: Pipe / Flow / Compose
+- Data flows through function pipelines
+- Each function takes one input, returns one output (or Result)
+
+**Immutability**: Readonly by default
+- `readonly` on all interface fields
+- `ReadonlyArray<T>`, `ReadonlyMap<K, V>` for collections
+- Update via spread operator (new object), never mutate
+
+**Type Safety**: Make illegal states unrepresentable
+- Branded types for domain concepts (IDs, paths, versions)
+- Discriminated unions for state machines and error types
+- Exhaustive pattern matching via `assertNever`
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*

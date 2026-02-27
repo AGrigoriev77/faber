@@ -13,20 +13,41 @@
 [PRINCIPLE_2_DESCRIPTION]
 <!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Test-First Imperative (NON-NEGOTIABLE)
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+TDD is mandatory for all implementation work. The Red-Green-Refactor cycle is strictly enforced:
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+1. **RED**: Write failing tests FIRST — tests define the contract before code exists
+2. **GREEN**: Write minimal code to make tests pass — no more, no less
+3. **REFACTOR**: Improve code while keeping tests green — clean without breaking
+
+**TDD Gate**: No `[IMPL]` task may begin until ALL `[TEST]` tasks in the same user story are completed and tests FAIL. This gate is checked by the `/faber.implement` command and cannot be bypassed.
+
+**Test Coverage Requirements**:
+- Every acceptance criterion → at least one test
+- Every Failure Mode row → at least one test
+- Every Pre/Post Condition → at least one property-based test
+- Every forbidden state transition → at least one test
+
+### IV. Functional-First Architecture (RECOMMENDED)
+
+Pure functions for business logic, side effects isolated at boundaries:
+
+1. **Result\<T, E\> over try/catch** — all fallible operations return Result, chained via `.andThen()`, `.map()`, `.match()`. try/catch only in I/O adapters
+2. **Immutability** — `readonly` on interfaces, `ReadonlyArray<T>`, update via spread. No mutations
+3. **Pipe/Compose** — data flows through function pipelines: `pipe(validate, transform, persist)`
+4. **Pure Core + Impure Shell** — business logic is pure (same input → same output), I/O is isolated in adapters that wrap results
+
+**Architecture Layers**: CLI (impure) → Commands (thin glue) → Core (pure) → Effects (impure adapters)
+
+### V. Compositional Architecture (RECOMMENDED — for projects with 5+ entities)
+
+When the project has 5+ domain entities, apply compositional patterns to prevent complexity explosion:
+
+1. **Domain Categories** — group related entities (Identity, Commerce, Content) rather than flat lists
+2. **Functors** — explicit transformations between categories (Cart → Order, Draft → Published)
+3. **Complexity Budget** — each critical operation has a max algorithmic complexity contract
+4. **Make Illegal States Unrepresentable** — use discriminated unions, not boolean flags + nullable fields
 
 ## [SECTION_2_NAME]
 <!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->

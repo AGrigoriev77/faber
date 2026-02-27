@@ -48,7 +48,17 @@ You **MUST** consider the user input before proceeding (if not empty).
      - Display the table showing all checklists passed
      - Automatically proceed to step 3
 
-3. Load and analyze the implementation context:
+3. **Detect Parallelization Capability**:
+   - Scan tasks.md for all `[P]` markers on tasks
+   - Build **Parallel Groups**: sets of `[P]` tasks within the same phase that touch different files
+   - Check for **file conflicts**: if two `[P]` tasks modify the same file, they CANNOT run in parallel — flag as sequential
+   - Build execution plan:
+     - Sequential tasks: execute in ID order
+     - Parallel groups: execute all tasks in the group concurrently
+     - Mixed phases: sequential tasks first, then parallel group, then dependent sequential tasks
+   - Report detected parallel opportunities before starting execution
+
+4. Load and analyze the implementation context:
    - **REQUIRED**: Read tasks.md for the complete task list and execution plan
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
    - **IF EXISTS**: Read data-model.md for entities and relationships
@@ -56,7 +66,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read research.md for technical decisions and constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
 
-4. **Project Setup Verification**:
+5. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
 
    **Detection & Creation Logic**:
@@ -100,13 +110,13 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Terraform**: `.terraform/`, `*.tfstate*`, `*.tfvars`, `.terraform.lock.hcl`
    - **Kubernetes/k8s**: `*.secret.yaml`, `secrets/`, `.kube/`, `kubeconfig*`, `*.key`, `*.crt`
 
-5. Parse tasks.md structure and extract:
+6. Parse tasks.md structure and extract:
    - **Task phases**: Setup, Tests, Core, Integration, Polish
    - **Task dependencies**: Sequential vs parallel execution rules
    - **Task details**: ID, description, file paths, parallel markers [P]
    - **Execution flow**: Order and dependency requirements
 
-6. **TDD Gate Check** (MANDATORY before any [IMPL] task):
+7. **TDD Gate Check** (MANDATORY before any [IMPL] task):
    - Scan tasks.md for all `[TEST]` tasks in the current phase
    - Verify each `[TEST]` task is marked `[X]` (completed)
    - Verify each test FILE exists and contains at least one test case
@@ -115,21 +125,21 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **If tests pass unexpectedly**: WARN — tests may be trivial or testing the wrong thing
    - Only after TDD Gate passes, proceed to implementation tasks
 
-7. Execute implementation following the task plan:
+8. Execute implementation following the task plan:
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
-8. Implementation execution rules:
+9. Implementation execution rules:
    - **Setup first**: Initialize project structure, dependencies, configuration
    - **Tests before code**: Write tests for contracts, entities, and integration scenarios
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
 
-9. Progress tracking and error handling:
+10. Progress tracking and error handling:
    - Report progress after each completed task
    - Halt execution if any non-parallel task fails
    - For parallel tasks [P], continue with successful tasks, report failed ones
@@ -137,7 +147,16 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Suggest next steps if implementation cannot proceed
    - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
 
-10. Completion validation:
+11. **Category Verification** (if plan.md contains Domain Categories):
+   - Load Domain Categories & Functors table from plan.md
+   - For each completed phase, verify:
+     - All entities within a domain category are implemented in the same module/directory
+     - Functor boundaries are respected — transformations between categories have explicit functions
+     - No circular dependencies between domain categories
+     - Cross-category integration tasks are present where functors connect categories
+   - Report any violations: "Entity X belongs to Category Y but is implemented outside its boundary"
+
+12. Completion validation:
    - Verify all required tasks are completed
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements

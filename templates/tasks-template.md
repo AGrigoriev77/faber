@@ -209,6 +209,43 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 
 ---
 
+## Parallelization Hints
+
+<!--
+  This section helps the /faber.implement command detect and execute parallel tasks efficiently.
+  The AI agent populates this based on the [P] markers and file paths in the tasks above.
+-->
+
+### Parallel Groups
+
+| Group | Tasks | Phase | Files Touched | Conflicts |
+|-------|-------|-------|---------------|-----------|
+| [e.g., PG-1] | [e.g., T003, T004, T005] | [e.g., Phase 1: Setup] | [e.g., .eslintrc, .prettierrc, tsconfig.json] | [None] |
+| [e.g., PG-2] | [e.g., T010, T011] | [e.g., Phase 3: US1 Tests] | [e.g., tests/contract/test_user.py, tests/integration/test_auth.py] | [None] |
+| [e.g., PG-3] | [e.g., T012, T013] | [e.g., Phase 3: US1 Models] | [e.g., src/models/user.py, src/models/session.py] | [None] |
+
+### Execution Modes
+
+| Mode | When to Use | Description |
+|------|------------|-------------|
+| **Sequential** | Tasks without `[P]` marker | Execute in Task ID order, wait for each to complete |
+| **Phase-Parallel** | `[P]` tasks within same phase | Execute all `[P]` tasks in a phase concurrently, then sequential tasks |
+| **Story-Parallel** | Multiple user stories ready | Execute different user stories concurrently (different team members) |
+| **Full-Parallel** | Maximum parallelism | Combine phase-parallel + story-parallel for fastest execution |
+
+### File Conflict Matrix
+
+<!--
+  If two [P] tasks touch the same file, they CANNOT run in parallel.
+  List known conflicts here so the implement command can schedule correctly.
+-->
+
+| File | Tasks | Resolution |
+|------|-------|------------|
+| [e.g., src/models/__init__.py] | [e.g., T012, T013] | [e.g., Run T012 first (adds User), T013 second (adds Session)] |
+
+---
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
