@@ -6,8 +6,7 @@ handoffs:
     prompt: All tests are written. Start implementation to make them pass.
     send: true
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --require-spec
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec
+  sh: bun scripts/ts/check-prerequisites.ts --json --require-spec
 ---
 
 ## User Input
