@@ -4,6 +4,9 @@ node_modules/
 # Build
 dist/
 faber
+
+# Local faber installation (created by faber init)
+.faber/
 *.tsbuildinfo
 
 # Coverage & testing
