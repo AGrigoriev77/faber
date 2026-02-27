@@ -8,6 +8,7 @@ dist/
 # Coverage & testing
 coverage/
 .stryker-tmp/
+stryker.log
 reports/
 
 # Drafts & planning (not shipped)
