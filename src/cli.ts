@@ -2,9 +2,19 @@ import { Command } from 'commander'
 import { AGENTS } from './core/agents.ts'
 import { validateInitOptions, resolveProjectPath, runInit } from './commands/init.ts'
 import { formatVersionInfo } from './commands/version.ts'
-import { formatCheckResult } from './commands/check.ts'
+import {
+  formatCheckReport,
+  summarizeCheck,
+  buildCheckList,
+  type CheckItem,
+  type ToolStatus,
+  type AgentInfo,
+} from './commands/check.ts'
 import { formatSuccess, formatError } from './core/ui.ts'
 import { checkTool } from './utils/git.ts'
+import { AGENT_FORMATS } from './extensions/registrar.ts'
+import { exists } from './utils/fs.ts'
+import { join } from 'node:path'
 import {
   runExtensionList,
   runExtensionSearch,
@@ -80,22 +90,51 @@ export const createProgram = (): Command => {
   // --- check ---
   program
     .command('check')
-    .description('Check installed tools')
+    .description('Verify project setup and integrity')
     .action(async () => {
-      const tools = ['git'] as const
-      await Promise.all(
-        tools.map(async (tool) => {
-          const result = await checkTool(tool)
-          result.match(
-            (found) => {
-              console.log(formatCheckResult({ tool, status: found ? 'found' : 'missing_required' }))
-            },
-            () => {
-              console.log(formatCheckResult({ tool, status: 'missing_required' }))
-            },
+      const projectPath = process.cwd()
+      const items: CheckItem[] = []
+
+      // 1. Check git
+      const gitResult = await checkTool('git')
+      const gitStatus: ToolStatus = gitResult.match(
+        (found) => found ? 'found' : 'missing_required',
+        () => 'missing_required',
+      )
+      items.push({ category: 'tools', name: 'git', status: gitStatus })
+
+      // 2. Detect agent directory
+      let agent: AgentInfo | undefined
+      for (const [name, format] of AGENT_FORMATS) {
+        const dirResult = await exists(join(projectPath, format.dir))
+        if (dirResult.isOk() && dirResult.value) {
+          agent = { name, dir: format.dir, extension: format.extension }
+          break
+        }
+      }
+
+      // 3. Build check list and verify each
+      const checkList = buildCheckList(projectPath, agent)
+      const results = await Promise.all(
+        checkList.map(async (entry) => {
+          const result = await exists(entry.path)
+          const status: ToolStatus = result.match(
+            (found) => found
+              ? 'found'
+              : entry.item.category === 'commands' ? 'missing_optional' : 'missing_required',
+            () => entry.item.category === 'commands' ? 'missing_optional' : 'missing_required',
           )
+          return { ...entry.item, status } as CheckItem
         }),
       )
+
+      const allItems = [...items, ...results]
+      console.log(formatCheckReport(allItems, agent?.name))
+      console.log()
+      console.log(summarizeCheck(allItems))
+
+      const hasMissingRequired = allItems.some((i) => i.status === 'missing_required')
+      if (hasMissingRequired) process.exit(1)
     })
 
   // --- version ---

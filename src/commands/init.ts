@@ -6,6 +6,7 @@ import { AGENTS } from '../core/agents.ts'
 import { AGENT_FORMATS } from '../extensions/registrar.ts'
 import { renderCommandForAgent } from '../extensions/manager.ts'
 import { initGitRepo } from '../utils/git.ts'
+import { EXPECTED_TEMPLATES } from './check.ts'
 
 // --- Types ---
 
@@ -50,14 +51,7 @@ interface InitContext {
 const BUNDLED_TEMPLATES_DIR = join(dirname(dirname(import.meta.dirname)), 'templates')
 const BUNDLED_SCRIPTS_DIR = join(dirname(dirname(import.meta.dirname)), 'scripts')
 
-const TEMPLATE_FILES = [
-  'spec-template.md',
-  'plan-template.md',
-  'tasks-template.md',
-  'constitution-template.md',
-  'checklist-template.md',
-  'agent-file-template.md',
-]
+const TEMPLATE_FILES = EXPECTED_TEMPLATES
 
 // --- Pure validation ---
 
