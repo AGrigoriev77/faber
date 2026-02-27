@@ -14,7 +14,7 @@ reports/
 
 # Drafts & planning (not shipped)
 DRAFT-*.md
-PLAN.md
+/PLAN.md
 CLAUDE.md
 
 # OS
