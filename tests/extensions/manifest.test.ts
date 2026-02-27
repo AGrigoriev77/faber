@@ -65,6 +65,13 @@ describe('parseManifest', () => {
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe('yaml_parse')
   })
+
+  it('returns err for YAML that parses to array', () => {
+    const result = parseManifest('- item1\n- item2\n')
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('yaml_parse')
+    expect(result._unsafeUnwrapErr().message).toContain('object')
+  })
 })
 
 describe('validateManifest', () => {
@@ -269,6 +276,47 @@ describe('validateManifest', () => {
     const result = validateManifest(data)
     expect(result.isErr()).toBe(true)
     expectFieldError(result, 'requires.faber_version')
+  })
+
+  it('rejects extension block as string (not object)', () => {
+    const data = { ...validData, extension: 'not-an-object' }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'extension')
+  })
+
+  it('rejects missing extension.description', () => {
+    const data = {
+      ...validData,
+      extension: { ...validData.extension, description: undefined },
+    }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'extension.description')
+  })
+
+  it('rejects requires block as string (not object)', () => {
+    const data = { ...validData, requires: 'not-an-object' }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'requires')
+  })
+
+  it('rejects provides block as string (not object)', () => {
+    const data = { ...validData, provides: 'not-an-object' }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'provides')
+  })
+
+  it('rejects extension.version: undefined', () => {
+    const data = {
+      ...validData,
+      extension: { ...validData.extension, version: undefined },
+    }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'extension.version')
   })
 
   test.prop([fc.string().filter(s => /[A-Z_.]/.test(s))])(

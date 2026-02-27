@@ -86,3 +86,25 @@ describe('checkTool', () => {
     expect(result._unsafeUnwrap()).toBe(false)
   })
 })
+
+describe('initGitRepo error paths', () => {
+  it('returns err when git init fails in nonexistent nested path', async () => {
+    const result = await initGitRepo(join(tmpDir, 'a', 'b', 'c'))
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('git_error')
+    expect(result._unsafeUnwrapErr().command).toContain('init')
+  })
+
+  it('git_error includes descriptive message', async () => {
+    const result = await initGitRepo(join(tmpDir, 'nope'))
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().message.length).toBeGreaterThan(0)
+  })
+
+  it('git_error command field contains the failing git subcommand', async () => {
+    const result = await initGitRepo(join(tmpDir, 'nope'))
+    expect(result.isErr()).toBe(true)
+    // The first failing command should be "git init" since dir doesn't exist
+    expect(result._unsafeUnwrapErr().command).toMatch(/git/)
+  })
+})

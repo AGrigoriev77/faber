@@ -41,7 +41,7 @@ export const manifestPath = (dir: string): string => join(dir, MANIFEST_FILE)
 // --- fs.ts adapter ---
 // Converts Promise<Result<T, FsError>> → ResultAsync<T, ExtensionCommandError>
 
-const wrapFs = <T>(
+export const wrapFs = <T>(
   op: Promise<Result<T, FsError>>,
   mapErr: (e: FsError) => ExtensionCommandError,
 ): ResultAsync<T, ExtensionCommandError> =>
@@ -57,7 +57,10 @@ const wrapFs = <T>(
 
 // Wrap sync Result<T, E> → ResultAsync<T, E>
 const liftResult = <T, E>(r: Result<T, E>): ResultAsync<T, E> =>
-  r.isOk() ? okAsync(r.value) : errAsync(r.error)
+  r.match(
+    (value): ResultAsync<T, E> => okAsync(value),
+    (error): ResultAsync<T, E> => errAsync(error),
+  )
 
 // --- FsError → message ---
 

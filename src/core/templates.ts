@@ -64,18 +64,18 @@ export const shouldMerge = (relativePath: string): boolean =>
 export const isExecutableScript = (filePath: string): boolean =>
   filePath.endsWith('.sh') || filePath.endsWith('.bash')
 
-// --- Error constructors ---
+// --- Error constructors (return specific variants for type narrowing) ---
 
-export const apiError = (inner: ApiError): TemplateError =>
+export const apiError = (inner: ApiError): Extract<TemplateError, { readonly tag: 'api' }> =>
   ({ tag: 'api', inner })
 
-export const fsError = (inner: FsError): TemplateError =>
+export const fsError = (inner: FsError): Extract<TemplateError, { readonly tag: 'fs' }> =>
   ({ tag: 'fs', inner })
 
-export const zipError = (path: string, message: string): TemplateError =>
+export const zipError = (path: string, message: string): Extract<TemplateError, { readonly tag: 'zip' }> =>
   ({ tag: 'zip', path, message })
 
-export const mergeError = (path: string, message: string): TemplateError =>
+export const mergeError = (path: string, message: string): Extract<TemplateError, { readonly tag: 'merge' }> =>
   ({ tag: 'merge', path, message })
 
 // --- ZIP extraction (async, uses yauzl-promise) ---
@@ -118,15 +118,19 @@ export const extractZip = async (
 
 // --- Download asset (async, uses fetch) ---
 
+type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+
 export const downloadAsset = async (
   url: string,
   destPath: string,
-  fetchFn: typeof globalThis.fetch = globalThis.fetch,
+  fetchFn: FetchFn = globalThis.fetch,
   token?: string,
 ): Promise<Result<string, TemplateError>> => {
   try {
-    const headers: Record<string, string> = { Accept: 'application/octet-stream' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    const headers: Record<string, string> = {
+      Accept: 'application/octet-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
 
     const response = await fetchFn(url, { headers })
     if (!response.ok) {

@@ -22,29 +22,28 @@ const CONFIG_CMP_RE = /^config\.([a-z0-9_.]+)\s*(==|!=)\s*["']([^"']+)["']$/i
 const ENV_IS_SET_RE = /^env\.([A-Z0-9_]+)\s+is\s+set$/i
 const ENV_CMP_RE = /^env\.([A-Z0-9_]+)\s*(==|!=)\s*["']([^"']+)["']$/i
 
+type ConditionParser = readonly [RegExp, (m: RegExpMatchArray) => HookCondition]
+
+const CONDITION_PARSERS: ReadonlyArray<ConditionParser> = [
+  [CONFIG_IS_SET_RE, (m) => ({ tag: 'config_is_set', keyPath: m[1]! })],
+  [CONFIG_CMP_RE, (m) => ({
+    tag: m[2] === '==' ? 'config_equals' as const : 'config_not_equals' as const,
+    keyPath: m[1]!, value: m[3]!,
+  })],
+  [ENV_IS_SET_RE, (m) => ({ tag: 'env_is_set', varName: m[1]! })],
+  [ENV_CMP_RE, (m) => ({
+    tag: m[2] === '==' ? 'env_equals' as const : 'env_not_equals' as const,
+    varName: m[1]!, value: m[3]!,
+  })],
+]
+
 export const parseCondition = (raw: string): Result<HookCondition, ConditionError> => {
   const trimmed = raw.trim()
-  let match: RegExpMatchArray | null
-
-  match = trimmed.match(CONFIG_IS_SET_RE)
-  if (match) return ok({ tag: 'config_is_set', keyPath: match[1]! })
-
-  match = trimmed.match(CONFIG_CMP_RE)
-  if (match) {
-    const tag = match[2] === '==' ? 'config_equals' as const : 'config_not_equals' as const
-    return ok({ tag, keyPath: match[1]!, value: match[3]! })
-  }
-
-  match = trimmed.match(ENV_IS_SET_RE)
-  if (match) return ok({ tag: 'env_is_set', varName: match[1]! })
-
-  match = trimmed.match(ENV_CMP_RE)
-  if (match) {
-    const tag = match[2] === '==' ? 'env_equals' as const : 'env_not_equals' as const
-    return ok({ tag, varName: match[1]!, value: match[3]! })
-  }
-
-  return err({ tag: 'invalid_condition', raw: trimmed })
+  const matched = CONDITION_PARSERS.flatMap(([re, build]) => {
+    const m = trimmed.match(re)
+    return m ? [ok(build(m)) as Result<HookCondition, ConditionError>] : []
+  })
+  return matched[0] ?? err({ tag: 'invalid_condition', raw: trimmed })
 }
 
 // --- Condition evaluation ---
@@ -116,15 +115,9 @@ export const registerHook = (
 export const unregisterHooks = (
   config: HooksConfig,
   extensionId: string,
-): HooksConfig => {
-  const result: Record<string, ReadonlyArray<HookEntry>> = {}
-
-  for (const [event, hooks] of Object.entries(config)) {
-    const filtered = hooks.filter((h) => h.extension !== extensionId)
-    if (filtered.length > 0) {
-      result[event] = filtered
-    }
-  }
-
-  return result
-}
+): HooksConfig =>
+  Object.fromEntries(
+    Object.entries(config)
+      .map(([event, hooks]) => [event, hooks.filter((h) => h.extension !== extensionId)] as const)
+      .filter(([, hooks]) => hooks.length > 0),
+  )

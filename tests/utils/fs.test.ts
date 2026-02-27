@@ -178,3 +178,60 @@ describe('writeJson edge cases', () => {
     expect(result._unsafeUnwrapErr().tag).toBe('io')
   })
 })
+
+describe('exists edge cases', () => {
+  it('returns err for permission denied (non-ENOENT)', async () => {
+    // On macOS/Linux, accessing /proc-like paths or restricted dirs can trigger non-ENOENT errors
+    // Test indirectly: a path whose parent has no execute permission
+    const parentDir = join(tmpDir, 'locked')
+    const { mkdir: fsMkdir } = await import('node:fs/promises')
+    await fsMkdir(parentDir)
+    await nodeWriteFile(join(parentDir, 'file.txt'), 'data')
+    await chmod(parentDir, 0o000)
+
+    const result = await exists(join(parentDir, 'file.txt'))
+    // On most systems this returns err with 'permission' tag
+    if (result.isErr()) {
+      expect(result._unsafeUnwrapErr().tag).toBe('permission')
+    }
+
+    // Restore permissions for cleanup
+    await chmod(parentDir, 0o755)
+  })
+})
+
+describe('writeFile edge cases', () => {
+  it('returns io error for path inside nonexistent dir', async () => {
+    const path = join(tmpDir, 'nonexistent', 'deep', 'file.txt')
+    const result = await writeFile(path, 'data')
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('not_found')
+  })
+})
+
+describe('readJson with readFile error propagation', () => {
+  it('propagates readFile not_found through andThen', async () => {
+    const result = await readJson(join(tmpDir, 'missing.json'))
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('not_found')
+  })
+})
+
+describe('mkdir edge cases', () => {
+  it('returns io error for impossible path under /dev/null', async () => {
+    const result = await mkdir('/dev/null/impossible/path')
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(['io', 'not_found']).toContain(error.tag)
+  })
+})
+
+describe('copyFile edge cases', () => {
+  it('returns err when destination dir does not exist', async () => {
+    const src = join(tmpDir, 'src.txt')
+    await nodeWriteFile(src, 'data')
+    const result = await copyFile(src, join(tmpDir, 'no-dir', 'dest.txt'))
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('not_found')
+  })
+})

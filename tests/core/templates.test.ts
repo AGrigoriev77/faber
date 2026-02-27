@@ -1,12 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { test } from '@fast-check/vitest'
 import fc from 'fast-check'
+import { join } from 'node:path'
+import { mkdtemp, rm, writeFile as nodeWriteFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import {
   assetName,
   flattenPrefix,
   mergeJsonObjects,
   shouldMerge,
   isExecutableScript,
+  extractZip,
+  downloadAsset,
+  apiError,
+  fsError,
+  zipError,
+  mergeError,
 } from '../../src/core/templates.ts'
 
 // --- assetName ---
@@ -96,6 +105,15 @@ describe('flattenPrefix', () => {
     ]
     const result = flattenPrefix(entries)
     expect(result).toEqual(['README.md', 'src/index.ts'])
+  })
+
+  it('returns empty when all entries are directories', () => {
+    const entries = ['dir-a/', 'dir-b/']
+    expect(flattenPrefix(entries)).toEqual([])
+  })
+
+  it('handles single file with prefix', () => {
+    expect(flattenPrefix(['prefix/file.ts'])).toEqual(['file.ts'])
   })
 })
 
@@ -211,5 +229,145 @@ describe('isExecutableScript', () => {
 
   it('returns true for files in nested paths', () => {
     expect(isExecutableScript('.faber/scripts/bash/check.sh')).toBe(true)
+  })
+})
+
+// --- Error constructors ---
+
+describe('error constructors', () => {
+  it('apiError creates api-tagged error', () => {
+    const error = apiError({ tag: 'network', message: 'fail' })
+    expect(error.tag).toBe('api')
+    expect(error.inner.tag).toBe('network')
+  })
+
+  it('fsError creates fs-tagged error', () => {
+    const error = fsError({ tag: 'not_found', path: '/x' })
+    expect(error.tag).toBe('fs')
+    expect(error.inner.tag).toBe('not_found')
+  })
+
+  it('zipError creates zip-tagged error', () => {
+    const error = zipError('/test.zip', 'corrupt')
+    expect(error.tag).toBe('zip')
+    expect(error.path).toBe('/test.zip')
+  })
+
+  it('mergeError creates merge-tagged error', () => {
+    const error = mergeError('/settings.json', 'conflict')
+    expect(error.tag).toBe('merge')
+    expect(error.path).toBe('/settings.json')
+  })
+})
+
+// --- extractZip ---
+
+describe('extractZip', () => {
+  let tmpDir: string
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'faber-zip-'))
+  })
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true })
+  })
+
+  it('returns zip error for nonexistent file', async () => {
+    const result = await extractZip(join(tmpDir, 'nope.zip'), tmpDir)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('zip')
+  })
+
+  it('returns zip error for invalid zip data', async () => {
+    const badZip = join(tmpDir, 'bad.zip')
+    await nodeWriteFile(badZip, 'not a zip file')
+    const result = await extractZip(badZip, tmpDir)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('zip')
+  })
+})
+
+// --- downloadAsset ---
+
+describe('downloadAsset', () => {
+  let tmpDir: string
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'faber-dl-'))
+  })
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true })
+  })
+
+  it('downloads and saves file on 200', async () => {
+    const content = new Uint8Array([72, 101, 108, 108, 111]) // "Hello"
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => content.buffer,
+    })
+    const dest = join(tmpDir, 'asset.zip')
+    const result = await downloadAsset('https://example.com/file.zip', dest, mockFetch)
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap()).toBe(dest)
+  })
+
+  it('sends Authorization header when token provided', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new ArrayBuffer(0),
+    })
+    const dest = join(tmpDir, 'asset.zip')
+    await downloadAsset('https://example.com/file.zip', dest, mockFetch, 'my-token')
+    expect(mockFetch.mock.calls[0]![1].headers['Authorization']).toBe('Bearer my-token')
+  })
+
+  it('does not send Authorization header without token', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new ArrayBuffer(0),
+    })
+    const dest = join(tmpDir, 'asset.zip')
+    await downloadAsset('https://example.com/file.zip', dest, mockFetch)
+    expect(mockFetch.mock.calls[0]![1].headers['Authorization']).toBeUndefined()
+  })
+
+  it('returns api error on non-200 status', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    })
+    const dest = join(tmpDir, 'asset.zip')
+    const result = await downloadAsset('https://example.com/file.zip', dest, mockFetch)
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(error.tag).toBe('api')
+    if (error.tag === 'api') {
+      expect(error.inner.tag).toBe('http')
+    }
+  })
+
+  it('returns network error on fetch failure', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('connection refused'))
+    const dest = join(tmpDir, 'asset.zip')
+    const result = await downloadAsset('https://example.com/file.zip', dest, mockFetch)
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(error.tag).toBe('api')
+    if (error.tag === 'api') {
+      expect(error.inner.tag).toBe('network')
+    }
+  })
+
+  it('returns network error on non-Error exception', async () => {
+    const mockFetch = vi.fn().mockRejectedValue('string error')
+    const dest = join(tmpDir, 'asset.zip')
+    const result = await downloadAsset('https://example.com/file.zip', dest, mockFetch)
+    expect(result.isErr()).toBe(true)
   })
 })

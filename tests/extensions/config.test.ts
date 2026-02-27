@@ -175,6 +175,15 @@ describe('getValue', () => {
     expect(getValue(config, 'missing', 'fallback')).toBe('fallback')
   })
 
+  it('returns default for deeply missing key (3+ segments)', () => {
+    expect(getValue(config, 'missing.deep.path')).toBeUndefined()
+    expect(getValue(config, 'missing.deep.path', 'fallback')).toBe('fallback')
+  })
+
+  it('returns default when intermediate is non-object primitive', () => {
+    expect(getValue({ a: 42 }, 'a.b.c', 'fallback')).toBe('fallback')
+  })
+
   it('path goes through null intermediate → returns default', () => {
     expect(getValue({ a: null }, 'a.b', 'default')).toBe('default')
   })

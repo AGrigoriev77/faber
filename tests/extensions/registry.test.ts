@@ -164,4 +164,50 @@ describe('parseRegistry / serializeRegistry', () => {
     expect(parsed['schema_version']).toBe('1.0')
     expect(parsed['extensions']['x']['installed_at']).toBe('2026-01-01T00:00:00Z')
   })
+
+  it('parses entry with missing version/source fields', () => {
+    const json = JSON.stringify({
+      schema_version: '1.0',
+      extensions: { 'ext-a': {} },
+    })
+    const result = parseRegistry(json)
+    expect(result.isOk()).toBe(true)
+    const ext = result._unsafeUnwrap().extensions['ext-a']!
+    expect(ext.version).toBe('')
+    expect(ext.source).toBe('')
+    expect(ext.installedAt).toBe('')
+  })
+
+  it('parses entry with camelCase installedAt', () => {
+    const json = JSON.stringify({
+      schema_version: '1.0',
+      extensions: {
+        'ext-a': { version: '1.0.0', source: 'local', installedAt: '2026-06-01' },
+      },
+    })
+    const result = parseRegistry(json)
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().extensions['ext-a']!.installedAt).toBe('2026-06-01')
+  })
+
+  it('handles extensions field as non-object', () => {
+    const json = JSON.stringify({ schema_version: '1.0', extensions: 'not-an-object' })
+    const result = parseRegistry(json)
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().extensions).toEqual({})
+  })
+
+  it('handles extensions field as null', () => {
+    const json = JSON.stringify({ schema_version: '1.0', extensions: null })
+    const result = parseRegistry(json)
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().extensions).toEqual({})
+  })
+
+  it('handles missing schema_version with fallback', () => {
+    const json = JSON.stringify({ extensions: {} })
+    const result = parseRegistry(json)
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().schemaVersion).toBe('1.0')
+  })
 })

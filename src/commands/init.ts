@@ -65,25 +65,32 @@ const TEMPLATE_FILES = [
 
 // --- Pure validation ---
 
-export const validateInitOptions = (opts: InitOptions): Result<InitOptions, InitError> => {
-  if (!opts.here && !opts.projectName.trim()) {
-    return err({ tag: 'validation', message: 'Project name is required (or use --here)' })
-  }
+const checkProjectName = (opts: InitOptions): Result<InitOptions, InitError> =>
+  !opts.here && !opts.projectName.trim()
+    ? err({ tag: 'validation', message: 'Project name is required (or use --here)' })
+    : ok(opts)
 
-  if (opts.ai && !AGENTS.has(opts.ai as never)) {
-    return err({ tag: 'validation', message: `Unknown AI agent: ${opts.ai}` })
-  }
+const checkAgent = (opts: InitOptions): Result<InitOptions, InitError> =>
+  opts.ai && !AGENTS.has(opts.ai as never)
+    ? err({ tag: 'validation', message: `Unknown AI agent: ${opts.ai}` })
+    : ok(opts)
 
-  if (!VALID_SCRIPT_TYPES.has(opts.script)) {
-    return err({ tag: 'validation', message: `Invalid script type: ${opts.script}. Use sh or ps` })
-  }
+const checkScriptType = (opts: InitOptions): Result<InitOptions, InitError> =>
+  !VALID_SCRIPT_TYPES.has(opts.script)
+    ? err({ tag: 'validation', message: `Invalid script type: ${opts.script}. Use sh or ps` })
+    : ok(opts)
 
-  if (opts.aiSkills && !opts.ai) {
-    return err({ tag: 'validation', message: '--ai-skills requires --ai to be set' })
-  }
+const checkAiSkills = (opts: InitOptions): Result<InitOptions, InitError> =>
+  opts.aiSkills && !opts.ai
+    ? err({ tag: 'validation', message: '--ai-skills requires --ai to be set' })
+    : ok(opts)
 
-  return ok(opts)
-}
+export const validateInitOptions = (opts: InitOptions): Result<InitOptions, InitError> =>
+  ok(opts)
+    .andThen(checkProjectName)
+    .andThen(checkAgent)
+    .andThen(checkScriptType)
+    .andThen(checkAiSkills)
 
 export const resolveProjectPath = (name: string, here: boolean, cwd: string): string =>
   here ? cwd : join(cwd, name)
@@ -104,16 +111,13 @@ const copyTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
 
   return wrap(() => mkdir(templatesDir, { recursive: true }))
     .andThen(() => ResultAsync.fromPromise(
-      (async () => {
-        let copied = 0
-        for (const file of TEMPLATE_FILES) {
-          try {
-            await cp(join(BUNDLED_TEMPLATES_DIR, file), join(templatesDir, file))
-            copied++
-          } catch { /* skip missing */ }
-        }
-        return copied
-      })(),
+      Promise.all(
+        TEMPLATE_FILES.map((file) =>
+          cp(join(BUNDLED_TEMPLATES_DIR, file), join(templatesDir, file))
+            .then(() => true as const)
+            .catch(() => false as const),
+        ),
+      ).then((results) => results.filter(Boolean).length),
       (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
     ))
     .map((copied) => ({ ...ctx, filesCreated: ctx.filesCreated + copied }))
@@ -143,20 +147,21 @@ const renderAgentCommands = (ctx: InitContext): ResultAsync<InitContext, InitErr
 
   return wrap(() => mkdir(cmdDir, { recursive: true }))
     .andThen(() => ResultAsync.fromPromise(
-      (async () => {
-        const files = await readdir(commandsSourceDir)
-        let rendered = 0
-        for (const file of files) {
-          if (!file.endsWith('.md')) continue
-          const name = `faber.${basename(file, '.md')}`
-          const source = await readFile(join(commandsSourceDir, file), 'utf-8')
-          const cmd = renderCommandForAgent(source, ctx.opts.ai, format, name)
-          await mkdir(dirname(join(ctx.opts.projectPath, cmd.relativePath)), { recursive: true })
-          await writeFile(join(ctx.opts.projectPath, cmd.relativePath), cmd.content)
-          rendered++
-        }
-        return rendered
-      })(),
+      readdir(commandsSourceDir)
+        .then((files) =>
+          Promise.all(
+            files
+              .filter((file) => file.endsWith('.md'))
+              .map(async (file) => {
+                const name = `faber.${basename(file, '.md')}`
+                const source = await readFile(join(commandsSourceDir, file), 'utf-8')
+                const cmd = renderCommandForAgent(source, ctx.opts.ai, format, name)
+                await mkdir(dirname(join(ctx.opts.projectPath, cmd.relativePath)), { recursive: true })
+                await writeFile(join(ctx.opts.projectPath, cmd.relativePath), cmd.content)
+              }),
+          ),
+        )
+        .then((results) => results.length),
       (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
     ))
     .map((rendered) => ({ ...ctx, filesCreated: ctx.filesCreated + rendered }))
@@ -165,14 +170,14 @@ const renderAgentCommands = (ctx: InitContext): ResultAsync<InitContext, InitErr
 
 const makeExecutable = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
   ResultAsync.fromPromise(
-    (async () => {
-      const entries = await readdir(ctx.opts.projectPath, { withFileTypes: true, recursive: true })
-      for (const entry of entries) {
-        if (entry.isFile() && isExecutableScript(entry.name)) {
-          await chmod(join(entry.parentPath ?? ctx.opts.projectPath, entry.name), 0o755)
-        }
-      }
-    })(),
+    readdir(ctx.opts.projectPath, { withFileTypes: true, recursive: true })
+      .then((entries) =>
+        Promise.all(
+          entries
+            .filter((entry) => entry.isFile() && isExecutableScript(entry.name))
+            .map((entry) => chmod(join(entry.parentPath ?? ctx.opts.projectPath, entry.name), 0o755)),
+        ),
+      ),
     (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
   )
     .map(() => ctx)

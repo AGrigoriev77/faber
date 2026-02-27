@@ -2,22 +2,22 @@ import chalk from 'chalk'
 
 // --- Types ---
 
+export type ToolStatus = 'found' | 'missing_required' | 'missing_optional'
+
 export interface ToolCheckResult {
   readonly tool: string
-  readonly found: boolean
-  readonly required: boolean
+  readonly status: ToolStatus
 }
 
 // --- Formatting (pure) ---
 
+const statusFormat: Record<ToolStatus, { readonly icon: string; readonly label: string }> = {
+  found:            { icon: chalk.green('✓'),  label: 'found' },
+  missing_required: { icon: chalk.red('✗'),    label: 'missing (required)' },
+  missing_optional: { icon: chalk.yellow('○'), label: 'missing (optional)' },
+}
+
 export const formatCheckResult = (result: ToolCheckResult): string => {
-  if (result.found) {
-    return `${chalk.green('✓')} ${result.tool} — found`
-  }
-
-  if (result.required) {
-    return `${chalk.red('✗')} ${result.tool} — missing (required)`
-  }
-
-  return `${chalk.yellow('○')} ${result.tool} — missing (optional)`
+  const fmt = statusFormat[result.status]
+  return `${fmt.icon} ${result.tool} — ${fmt.label}`
 }

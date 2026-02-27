@@ -5,6 +5,7 @@ import {
   loadRegistry,
   saveRegistry,
   loadManifestFromDir,
+  wrapFs,
   mapManagerError,
   mapFsError,
   type ExtensionCommandError,
@@ -52,13 +53,15 @@ const loadContext = (opts: ExtensionAddOptions): ResultAsync<AddContext, Extensi
         .map((manifest) => ({ opts, registry, manifest, filesCreated: 0 })),
     )
 
-const validateGuards = (ctx: AddContext): ResultAsync<AddContext, ExtensionCommandError> => {
-  const result = checkCompatibility(CLI_VERSION, ctx.manifest.requires.faberVersion)
+const validateGuards = (ctx: AddContext): ResultAsync<AddContext, ExtensionCommandError> =>
+  checkCompatibility(CLI_VERSION, ctx.manifest.requires.faberVersion)
     .mapErr(mapManagerError)
     .andThen(() => checkNotInstalled(ctx.registry, ctx.manifest.extension.id).mapErr(mapManagerError))
     .map(() => ctx)
-  return result.isOk() ? okAsync(result.value) : errAsync(result.error)
-}
+    .match(
+      (value) => okAsync(value),
+      (error) => errAsync(error),
+    )
 
 const persistRegistry = (ctx: AddContext): ResultAsync<AddContext, ExtensionCommandError> => {
   const entry = buildRegistryEntry(ctx.manifest, ctx.opts.source)
@@ -68,42 +71,33 @@ const persistRegistry = (ctx: AddContext): ResultAsync<AddContext, ExtensionComm
 
 const copyFiles = (ctx: AddContext): ResultAsync<AddContext, ExtensionCommandError> => {
   const destDir = extensionDir(ctx.opts.cwd, ctx.manifest.extension.id)
-  return ResultAsync.fromPromise(
-    (async () => {
-      const mkResult = await mkdir(destDir)
-      if (mkResult.isErr()) throw mkResult.error
-      const entries = await readdir(ctx.opts.source, { withFileTypes: true })
-      const files = entries.filter((e) => e.isFile())
-      const results = await Promise.all(
-        files.map(async (entry) => {
-          const r = await copyFile(join(ctx.opts.source, entry.name), join(destDir, entry.name))
-          if (r.isErr()) throw r.error
-        }),
-      )
-      return results.length
-    })(),
-    (e): ExtensionCommandError =>
-      typeof e === 'object' && e !== null && 'tag' in e
-        ? mapFsError(e as import('../../utils/fs.ts').FsError)
-        : { tag: 'fs', path: ctx.opts.source, message: e instanceof Error ? e.message : String(e) },
-  ).map((copied) => ({ ...ctx, filesCreated: copied }))
+  return wrapFs(mkdir(destDir), mapFsError)
+    .andThen(() => ResultAsync.fromPromise(
+      readdir(ctx.opts.source, { withFileTypes: true }),
+      (e): ExtensionCommandError => ({ tag: 'fs', path: ctx.opts.source, message: e instanceof Error ? e.message : String(e) }),
+    ))
+    .andThen((entries) =>
+      ResultAsync.combine(
+        entries.filter((e) => e.isFile()).map((entry) =>
+          wrapFs(copyFile(join(ctx.opts.source, entry.name), join(destDir, entry.name)), mapFsError),
+        ),
+      ).map((results) => ({ ...ctx, filesCreated: results.length })),
+    )
 }
 
-const renderSingleCommand = async (
+const renderSingleCommand = (
   cmd: { readonly file: string; readonly name: string },
   ctx: AddContext,
   format: ReturnType<typeof AGENT_FORMATS.get> & object,
-): Promise<boolean> => {
-  try {
-    const cmdSource = await readFile(join(ctx.opts.source, cmd.file), 'utf-8')
-    const rendered = renderCommandForAgent(cmdSource, ctx.opts.ai!, format, cmd.name)
-    await nodeMkdir(join(ctx.opts.cwd, format.dir), { recursive: true })
-    await nodeWriteFile(join(ctx.opts.cwd, rendered.relativePath), rendered.content)
-    return true
-  } catch {
-    return false // Non-fatal
-  }
-}
+): Promise<boolean> =>
+  readFile(join(ctx.opts.source, cmd.file), 'utf-8')
+    .then((cmdSource) => {
+      const rendered = renderCommandForAgent(cmdSource, ctx.opts.ai!, format, cmd.name)
+      return nodeMkdir(join(ctx.opts.cwd, format.dir), { recursive: true })
+        .then(() => nodeWriteFile(join(ctx.opts.cwd, rendered.relativePath), rendered.content))
+    })
+    .then(() => true)
+    .catch(() => false)
 
 const renderAgentCommands = (ctx: AddContext): ResultAsync<AddContext, ExtensionCommandError> => {
   if (!ctx.opts.ai) return ResultAsync.fromSafePromise(Promise.resolve(ctx))

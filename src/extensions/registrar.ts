@@ -74,22 +74,19 @@ export const renderMarkdownCommand = (fm: Frontmatter, body: string, extId: stri
 }
 
 export const renderTomlCommand = (fm: Frontmatter, body: string, extId: string): string => {
-  const lines: string[] = []
+  const descLines = fm['description']
+    ? [`description = "${String(fm['description']).replace(/"/g, '\\"')}"`, '']
+    : []
 
-  if (fm['description']) {
-    const desc = String(fm['description']).replace(/"/g, '\\"')
-    lines.push(`description = "${desc}"`)
-    lines.push('')
-  }
-
-  lines.push(`# Extension: ${extId}`)
-  lines.push(`# Config: .faber/extensions/${extId}/`)
-  lines.push('')
-  lines.push('prompt = """')
-  lines.push(body)
-  lines.push('"""')
-
-  return lines.join('\n')
+  return [
+    ...descLines,
+    `# Extension: ${extId}`,
+    `# Config: .faber/extensions/${extId}/`,
+    '',
+    'prompt = """',
+    body,
+    '"""',
+  ].join('\n')
 }
 
 export const convertArgPlaceholder = (content: string, from: string, to: string): string =>
@@ -99,12 +96,12 @@ export const adjustScriptPaths = (fm: Frontmatter): Frontmatter => {
   const scripts = fm['scripts']
   if (!scripts || typeof scripts !== 'object') return fm
 
-  const adjusted: Record<string, string> = {}
-  for (const [key, value] of Object.entries(scripts as Record<string, string>)) {
-    adjusted[key] = value.startsWith('../../scripts/')
-      ? `.faber/scripts/${value.slice(14)}`
-      : value
-  }
+  const adjusted = Object.fromEntries(
+    Object.entries(scripts as Record<string, string>).map(([key, value]) => [
+      key,
+      value.startsWith('../../scripts/') ? `.faber/scripts/${value.slice(14)}` : value,
+    ]),
+  )
 
   return { ...fm, scripts: adjusted }
 }

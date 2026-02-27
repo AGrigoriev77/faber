@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   formatError,
   formatSuccess,
   formatWarning,
   formatList,
   formatTable,
+  printMessage,
   type UiMessage,
 } from '../../src/core/ui.ts'
 
@@ -19,6 +20,11 @@ describe('formatError', () => {
   it('includes tag when provided', () => {
     const result = formatError('Not found', 'not_found')
     expect(result).toContain('not_found')
+  })
+
+  it('formats without tag when not provided', () => {
+    const result = formatError('Something failed')
+    expect(result).not.toContain('[')
   })
 })
 
@@ -118,5 +124,37 @@ describe('UiMessage', () => {
   it('represents info message', () => {
     const msg: UiMessage = { tag: 'info', text: 'info' }
     expect(msg.tag).toBe('info')
+  })
+})
+
+// --- printMessage ---
+
+describe('printMessage', () => {
+  it('prints error to stderr', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    printMessage({ tag: 'error', text: 'bad' })
+    expect(spy).toHaveBeenCalledOnce()
+    spy.mockRestore()
+  })
+
+  it('prints success to stdout', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    printMessage({ tag: 'success', text: 'ok' })
+    expect(spy).toHaveBeenCalledOnce()
+    spy.mockRestore()
+  })
+
+  it('prints warning to stderr', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    printMessage({ tag: 'warning', text: 'warn' })
+    expect(spy).toHaveBeenCalledOnce()
+    spy.mockRestore()
+  })
+
+  it('prints info to stdout', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    printMessage({ tag: 'info', text: 'hello' })
+    expect(spy).toHaveBeenCalledWith('hello')
+    spy.mockRestore()
   })
 })

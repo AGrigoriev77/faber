@@ -1,4 +1,4 @@
-import { ok, err } from 'neverthrow'
+import { ok, err, fromThrowable } from 'neverthrow'
 import type { Result } from 'neverthrow'
 
 // TODO: update when faber catalog URL is finalized
@@ -47,40 +47,36 @@ interface SearchFilters {
 const isLocalhost = (hostname: string | null): boolean =>
   hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
 
+const safeUrl = (raw: string): Result<URL, CatalogError> =>
+  fromThrowable(
+    () => new URL(raw),
+    (): CatalogError => ({ tag: 'invalid_url', url: raw, message: 'Not a valid URL' }),
+  )()
+
+const validateUrlHost = (parsed: URL, raw: string): Result<URL, CatalogError> =>
+  parsed.hostname
+    ? ok(parsed)
+    : err({ tag: 'invalid_url', url: raw, message: 'URL must have a host' })
+
+const validateUrlProtocol = (parsed: URL, raw: string): Result<string, CatalogError> =>
+  parsed.protocol === 'https:' || (parsed.protocol === 'http:' && isLocalhost(parsed.hostname))
+    ? ok(raw)
+    : err({ tag: 'invalid_url', url: raw, message: 'Must use HTTPS (HTTP only allowed for localhost)' })
+
 export const resolveCatalogUrl = (): Result<string, CatalogError> => {
   const envUrl = (process.env['FABER_CATALOG_URL'] ?? '').trim()
-
   if (!envUrl) return ok(DEFAULT_CATALOG_URL)
 
-  let parsed: URL
-  try {
-    parsed = new URL(envUrl)
-  } catch {
-    return err({ tag: 'invalid_url', url: envUrl, message: 'Not a valid URL' })
-  }
-
-  if (!parsed.hostname) {
-    return err({ tag: 'invalid_url', url: envUrl, message: 'URL must have a host' })
-  }
-
-  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLocalhost(parsed.hostname))) {
-    return err({ tag: 'invalid_url', url: envUrl, message: 'Must use HTTPS (HTTP only allowed for localhost)' })
-  }
-
-  return ok(envUrl)
+  return safeUrl(envUrl)
+    .andThen((parsed) => validateUrlHost(parsed, envUrl))
+    .andThen((parsed) => validateUrlProtocol(parsed, envUrl))
 }
 
 // --- Cache ---
 
 export const isCacheValid = (meta: CacheMetadata, maxAgeSeconds: number = CACHE_DURATION_SECONDS): boolean => {
-  try {
-    const cachedAt = new Date(meta.cachedAt).getTime()
-    if (isNaN(cachedAt)) return false
-    const ageSeconds = (Date.now() - cachedAt) / 1000
-    return ageSeconds < maxAgeSeconds
-  } catch {
-    return false
-  }
+  const cachedAt = new Date(meta.cachedAt).getTime()
+  return !isNaN(cachedAt) && (Date.now() - cachedAt) / 1000 < maxAgeSeconds
 }
 
 // --- Search ---
@@ -113,16 +109,10 @@ export const validateDownloadUrl = (url: string): Result<string, CatalogError> =
     return err({ tag: 'invalid_url', url, message: 'Empty download URL' })
   }
 
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return err({ tag: 'invalid_url', url, message: 'Not a valid URL' })
-  }
-
-  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLocalhost(parsed.hostname))) {
-    return err({ tag: 'invalid_url', url, message: 'Download URL must use HTTPS' })
-  }
-
-  return ok(url)
+  return safeUrl(url)
+    .andThen((parsed) =>
+      parsed.protocol === 'https:' || (parsed.protocol === 'http:' && isLocalhost(parsed.hostname))
+        ? ok(url)
+        : err({ tag: 'invalid_url' as const, url, message: 'Download URL must use HTTPS' }),
+    )
 }

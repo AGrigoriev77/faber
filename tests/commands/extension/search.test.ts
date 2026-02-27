@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { runExtensionSearch, formatSearchResults, resolveCatalog } from '../../../src/commands/extension/search.ts'
 import type { Catalog, SearchResult } from '../../../src/extensions/catalog.ts'
 
@@ -109,5 +109,13 @@ describe('resolveCatalog', () => {
     const result = resolveCatalog()
     expect(result.isOk()).toBe(true)
     expect(result._unsafeUnwrap()).toContain('github')
+  })
+
+  it('returns error for invalid env URL', () => {
+    vi.stubEnv('FABER_CATALOG_URL', 'not a url')
+    const result = resolveCatalog()
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('network')
+    vi.unstubAllEnvs()
   })
 })

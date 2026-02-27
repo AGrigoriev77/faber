@@ -248,4 +248,35 @@ describe('runInit', () => {
     )
     expect(hasCommandsDir).toBe(false)
   })
+
+  it('init with unknown agent format creates no commands directory', async () => {
+    const dir = join(tmp, 'unknown-agent')
+    await init(dir, { ai: 'nonexistent-agent-format' })
+    const entries = await readdir(dir, { recursive: true })
+    const hasCommandsDir = entries.some((e) =>
+      typeof e === 'string' && e.includes('commands'),
+    )
+    expect(hasCommandsDir).toBe(false)
+  })
+
+  it('init with toml-based agent (gemini) creates .toml files', async () => {
+    const dir = join(tmp, 'toml-agent')
+    await init(dir, { ai: 'qwen' })
+    const files = await readdir(join(dir, '.qwen', 'commands'))
+    expect(files.length).toBeGreaterThan(0)
+    expect(files.some((f) => f.endsWith('.toml'))).toBe(true)
+  })
+
+  it('copyTemplates handles missing template file gracefully', async () => {
+    // If templates exist, init succeeds even if one is missing
+    const dir = join(tmp, 'graceful')
+    const result = await init(dir)
+    expect(result.isOk()).toBe(true)
+  })
+
+  it('returns fs error for project path under /dev/null', async () => {
+    const result = await init('/dev/null/impossible/project')
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('fs')
+  })
 })

@@ -179,4 +179,19 @@ describe('fetchLatestRelease', () => {
     const url = fetcher.mock.calls[0]![0] as string
     expect(url).toContain('myorg/myrepo')
   })
+
+  it('re-throws errors with tag property', async () => {
+    const taggedError = Object.assign(new Error('parse fail'), { tag: 'parse' })
+    const fetcher = vi.fn().mockRejectedValue(taggedError)
+
+    await expect(fetchLatestRelease({ fetch: fetcher })).rejects.toThrow('parse fail')
+  })
+
+  it('returns network error for non-Error exception', async () => {
+    const fetcher = vi.fn().mockRejectedValue('string error')
+    const result = await fetchLatestRelease({ fetch: fetcher })
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('network')
+    expect(result._unsafeUnwrapErr()).toHaveProperty('message', 'string error')
+  })
 })

@@ -43,11 +43,13 @@ const loadContext = (opts: ExtensionRemoveOptions): ResultAsync<RemoveContext, E
         .map((entry) => ({ opts, registry, version: entry.version })),
     )
 
-const persistRemoval = (ctx: RemoveContext): ResultAsync<RemoveContext, ExtensionCommandError> => {
-  const result = removeExtension(ctx.registry, ctx.opts.id)
-  if (result.isErr()) return errAsync({ tag: 'not_installed' as const, id: ctx.opts.id })
-  return saveRegistry(ctx.opts.cwd, result.value).map(() => ctx)
-}
+const persistRemoval = (ctx: RemoveContext): ResultAsync<RemoveContext, ExtensionCommandError> =>
+  removeExtension(ctx.registry, ctx.opts.id)
+    .mapErr((): ExtensionCommandError => ({ tag: 'not_installed', id: ctx.opts.id }))
+    .match(
+      (updated) => saveRegistry(ctx.opts.cwd, updated).map(() => ctx),
+      (e) => errAsync(e),
+    )
 
 const cleanupFiles = (ctx: RemoveContext): ResultAsync<RemoveContext, ExtensionCommandError> => {
   if (ctx.opts.keepConfig) return ResultAsync.fromSafePromise(Promise.resolve(ctx))

@@ -54,6 +54,31 @@ describe('resolveCatalogUrl', () => {
     const result = resolveCatalogUrl()
     expect(result.isErr()).toBe(true)
   })
+
+  it('rejects completely invalid URL string', () => {
+    vi.stubEnv('FABER_CATALOG_URL', 'not a url at all')
+    const result = resolveCatalogUrl()
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('invalid_url')
+  })
+
+  it('rejects URL without hostname (data: protocol)', () => {
+    vi.stubEnv('FABER_CATALOG_URL', 'data:text/plain,hello')
+    const result = resolveCatalogUrl()
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(error.tag).toBe('invalid_url')
+    if (error.tag === 'invalid_url') {
+      expect(error.message).toContain('host')
+    }
+  })
+
+  it('rejects FTP URL', () => {
+    vi.stubEnv('FABER_CATALOG_URL', 'ftp://example.com/catalog.json')
+    const result = resolveCatalogUrl()
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('invalid_url')
+  })
 })
 
 // --- isCacheValid ---

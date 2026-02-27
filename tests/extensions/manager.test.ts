@@ -44,6 +44,15 @@ describe('compareVersions', () => {
     expect(compareVersions('1.2', '1.2.0')).toBe(0)
   })
 
+  it('handles missing patch in second version', () => {
+    expect(compareVersions('1.2.0', '1.2')).toBe(0)
+  })
+
+  it('handles single-segment versions', () => {
+    expect(compareVersions('1', '1')).toBe(0)
+    expect(compareVersions('2', '1')).toBeGreaterThan(0)
+  })
+
   test.prop([
     fc.integer({ min: 0, max: 99 }),
     fc.integer({ min: 0, max: 99 }),
@@ -112,6 +121,16 @@ describe('checkCompatibility', () => {
   it('handles > constraint', () => {
     expect(checkCompatibility('1.0.1', '>1.0.0').isOk()).toBe(true)
     expect(checkCompatibility('1.0.0', '>1.0.0').isErr()).toBe(true)
+  })
+
+  it('handles != constraint', () => {
+    expect(checkCompatibility('1.0.0', '!=2.0.0').isOk()).toBe(true)
+    expect(checkCompatibility('1.0.0', '!=1.0.0').isErr()).toBe(true)
+  })
+
+  it('handles bare version (exact match, no operator)', () => {
+    expect(checkCompatibility('1.0.0', '1.0.0').isOk()).toBe(true)
+    expect(checkCompatibility('1.0.1', '1.0.0').isErr()).toBe(true)
   })
 })
 

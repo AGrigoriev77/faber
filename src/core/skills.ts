@@ -22,13 +22,12 @@ export const SKILL_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
 export const skillName = (commandName: string): string =>
   `${SKILL_PREFIX}-${commandName}`
 
-export const normalizeCommandName = (filename: string): string => {
-  let name = filename
-  if (name.endsWith('.md')) name = name.slice(0, -3)
-  if (name.startsWith('speckit.')) name = name.slice(8)
-  if (name.startsWith('faber.')) name = name.slice(6)
-  return name
-}
+export const normalizeCommandName = (filename: string): string =>
+  [
+    (n: string): string => n.endsWith('.md') ? n.slice(0, -3) : n,
+    (n: string): string => n.startsWith('speckit.') ? n.slice(8) : n,
+    (n: string): string => n.startsWith('faber.') ? n.slice(6) : n,
+  ].reduce((name, transform) => transform(name), filename)
 
 export const buildSkillFrontmatter = (
   commandName: string,

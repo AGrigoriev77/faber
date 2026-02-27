@@ -68,12 +68,9 @@ export const checkNotInstalled = (registry: Registry, id: string): Result<void, 
     ? err({ tag: 'already_installed', id })
     : ok(undefined)
 
-export const checkIsInstalled = (registry: Registry, id: string): Result<ExtensionEntry, ManagerError> => {
-  const result = getExtension(registry, id)
-  return result.isOk()
-    ? ok(result.value)
-    : err({ tag: 'not_installed', id })
-}
+export const checkIsInstalled = (registry: Registry, id: string): Result<ExtensionEntry, ManagerError> =>
+  getExtension(registry, id)
+    .mapErr((): ManagerError => ({ tag: 'not_installed', id }))
 
 // --- Builders ---
 

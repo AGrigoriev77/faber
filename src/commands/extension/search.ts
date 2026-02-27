@@ -1,4 +1,4 @@
-import { ok, err } from 'neverthrow'
+import { ok } from 'neverthrow'
 import type { Result } from 'neverthrow'
 import { mapCatalogError, type ExtensionCommandError } from './common.ts'
 import { searchExtensions, resolveCatalogUrl } from '../../extensions/catalog.ts'
@@ -50,7 +50,5 @@ export const runExtensionSearch = (
 
 // --- Catalog URL resolution (re-export for CLI) ---
 
-export const resolveCatalog = (): Result<string, ExtensionCommandError> => {
-  const result = resolveCatalogUrl()
-  return result.isOk() ? ok(result.value) : err(mapCatalogError(result.error))
-}
+export const resolveCatalog = (): Result<string, ExtensionCommandError> =>
+  resolveCatalogUrl().mapErr(mapCatalogError)

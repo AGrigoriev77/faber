@@ -74,6 +74,17 @@ describe('loadRegistry', () => {
     expect(result._unsafeUnwrap().extensions).toEqual({})
   })
 
+  it('returns empty registry for corrupted registry file', async () => {
+    const dir = join(tmpDir, '.faber', 'extensions')
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, '.registry'), 'not valid json {{{')
+
+    const result = await loadRegistry(tmpDir)
+    // parseRegistry returns ok(emptyRegistry()) on parse error
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().extensions).toEqual({})
+  })
+
   it('parses existing registry file', async () => {
     const dir = join(tmpDir, '.faber', 'extensions')
     await mkdir(dir, { recursive: true })
@@ -110,6 +121,16 @@ describe('saveRegistry', () => {
     const loaded = await loadRegistry(tmpDir)
     expect(loaded.isOk()).toBe(true)
     expect(loaded._unsafeUnwrap().extensions['my-ext']!.version).toBe('2.0.0')
+  })
+})
+
+// --- saveRegistry error paths ---
+
+describe('saveRegistry error paths', () => {
+  it('returns error when extensions dir cannot be created', async () => {
+    // Use a path that can't have subdirectories
+    const result = await saveRegistry('/dev/null', emptyRegistry())
+    expect(result.isErr()).toBe(true)
   })
 })
 
