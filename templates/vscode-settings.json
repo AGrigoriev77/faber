@@ -7,6 +7,6 @@
         "faber.implement": true
     },
     "chat.tools.terminal.autoApprove": {
-        ".faber/scripts/ts/": true
+        ".faber/scripts/": true
     }
 }

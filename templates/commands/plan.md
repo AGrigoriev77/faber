@@ -9,9 +9,9 @@ handoffs:
     agent: faber.checklist
     prompt: Create a checklist for the following domain...
 scripts:
-  sh: bun scripts/ts/setup-plan.ts --json
+  sh: bun scripts/setup-plan.ts --json
 agent_scripts:
-  sh: bun scripts/ts/update-agent-context.ts __AGENT__
+  sh: bun scripts/update-agent-context.ts __AGENT__
 ---
 
 ## User Input

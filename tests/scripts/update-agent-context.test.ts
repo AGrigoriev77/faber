@@ -7,7 +7,7 @@ import {
   getCommandsForLanguage,
   parsePlanData,
   updateExistingContent,
-} from '../../scripts/ts/update-agent-context.ts'
+} from '../../scripts/update-agent-context.ts'
 
 // ─── extractPlanField ─────────────────────────────────────────────────
 

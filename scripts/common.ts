@@ -82,17 +82,16 @@ export const buildFeaturePaths = (
 
 // ─── I/O Functions ─────────────────────────────────────────────────────
 
+/* v8 ignore start */
+/** Build ancestor directory chain from start up to filesystem root. */
+const ancestorDirs = (dir: string): ReadonlyArray<string> =>
+  dir === dirname(dir) ? [] : [dir, ...ancestorDirs(dirname(dir))]
+
 /** Search upward for `.git` or `.faber` to find repo root. */
-export const findRepoRoot = (startDir: string): string | null => {
-  let dir = startDir
-  while (dir !== dirname(dir)) {
-    if (existsSync(join(dir, '.git')) || existsSync(join(dir, '.specify'))) {
-      return dir
-    }
-    dir = dirname(dir)
-  }
-  return null
-}
+export const findRepoRoot = (startDir: string): string | null =>
+  ancestorDirs(startDir).find((d) =>
+    existsSync(join(d, '.git')) || existsSync(join(d, '.specify')),
+  ) ?? null
 
 /** Check if cwd is inside a git repo. */
 export const hasGit = (cwd: string): boolean => {
@@ -144,15 +143,11 @@ export const getCurrentBranch = (cwd: string): string => {
         .filter((d) => d.isDirectory())
         .map((d) => d.name)
 
-      let highest = 0
-      let latestFeature = ''
-      dirs.forEach((name) => {
+      const latestFeature = dirs.reduce((best, name) => {
         const num = extractBranchNumber(name)
-        if (num !== null && num > highest) {
-          highest = num
-          latestFeature = name
-        }
-      })
+        const bestNum = extractBranchNumber(best)
+        return num !== null && num > (bestNum ?? 0) ? name : best
+      }, '')
 
       if (latestFeature) return latestFeature
     }

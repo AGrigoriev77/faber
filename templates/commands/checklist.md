@@ -1,7 +1,7 @@
 ---
 description: Generate a custom checklist for the current feature based on user requirements.
 scripts:
-  sh: bun scripts/ts/check-prerequisites.ts --json
+  sh: bun scripts/check-prerequisites.ts --json
 ---
 
 ## Checklist Purpose: "Unit Tests for English"

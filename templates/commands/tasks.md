@@ -10,7 +10,7 @@ handoffs:
     prompt: Start the implementation in phases
     send: true
 scripts:
-  sh: bun scripts/ts/check-prerequisites.ts --json
+  sh: bun scripts/check-prerequisites.ts --json
 ---
 
 ## User Input

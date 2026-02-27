@@ -139,53 +139,66 @@ interface ParsedArgs {
   readonly description: string
 }
 
-const parseArgs = (argv: ReadonlyArray<string>): ParsedArgs => {
-  const args: string[] = []
-  let json = false
-  let shortName = ''
-  let number: number | null = null
+interface ParseState {
+  readonly json: boolean
+  readonly shortName: string
+  readonly number: number | null
+  readonly args: ReadonlyArray<string>
+  readonly pendingFlag: string
+}
 
-  let idx = 0
-  while (idx < argv.length) {
-    const arg = argv[idx]!
-    if (arg === '--json') {
-      json = true
-    } else if (arg === '--short-name') {
-      idx += 1
-      const val = argv[idx]
-      if (!val || val.startsWith('--')) {
-        process.stderr.write('Error: --short-name requires a value\n')
-        process.exit(1)
+const parseArgs = (argv: ReadonlyArray<string>): ParsedArgs => {
+  const state = argv.reduce<ParseState>(
+    (acc, arg) => {
+      if (acc.pendingFlag === '--short-name') {
+        if (arg.startsWith('--')) {
+          process.stderr.write('Error: --short-name requires a value\n')
+          process.exit(1)
+        }
+        return { ...acc, shortName: arg, pendingFlag: '' }
       }
-      shortName = val
-    } else if (arg === '--number') {
-      idx += 1
-      const val = argv[idx]
-      if (!val || val.startsWith('--')) {
-        process.stderr.write('Error: --number requires a value\n')
-        process.exit(1)
+      if (acc.pendingFlag === '--number') {
+        if (arg.startsWith('--')) {
+          process.stderr.write('Error: --number requires a value\n')
+          process.exit(1)
+        }
+        return { ...acc, number: parseInt(arg, 10), pendingFlag: '' }
       }
-      number = parseInt(val, 10)
-    } else if (arg === '--help' || arg === '-h') {
-      process.stdout.write(
-        `Usage: create-new-feature [--json] [--short-name <name>] [--number N] <description...>\n\n` +
-        `Options:\n` +
-        `  --json              Output in JSON format\n` +
-        `  --short-name <name> Provide a custom short name for the branch\n` +
-        `  --number N          Specify branch number manually\n` +
-        `  --help, -h          Show this help message\n`,
-      )
-      process.exit(0)
-    } else {
-      args.push(arg)
-    }
-    idx += 1
+
+      if (arg === '--json') return { ...acc, json: true }
+      if (arg === '--short-name' || arg === '--number') return { ...acc, pendingFlag: arg }
+      if (arg === '--help' || arg === '-h') {
+        process.stdout.write(
+          `Usage: create-new-feature [--json] [--short-name <name>] [--number N] <description...>\n\n` +
+          `Options:\n` +
+          `  --json              Output in JSON format\n` +
+          `  --short-name <name> Provide a custom short name for the branch\n` +
+          `  --number N          Specify branch number manually\n` +
+          `  --help, -h          Show this help message\n`,
+        )
+        process.exit(0)
+      }
+      return { ...acc, args: [...acc.args, arg] }
+    },
+    { json: false, shortName: '', number: null, args: [], pendingFlag: '' },
+  )
+
+  if (state.pendingFlag) {
+    process.stderr.write(`Error: ${state.pendingFlag} requires a value\n`)
+    process.exit(1)
   }
 
-  return { json, shortName, number, description: args.join(' ') }
+  return {
+    json: state.json,
+    shortName: state.shortName,
+    number: state.number,
+    description: state.args.join(' '),
+  }
 }
 
 // ─── Main (CLI) ───────────────────────────────────────────────────────
+
+/* v8 ignore start */
 
 if (import.meta.main) {
   const parsed = parseArgs(process.argv.slice(2))

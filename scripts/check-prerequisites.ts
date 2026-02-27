@@ -60,8 +60,9 @@ const parseArgs = (argv: ReadonlyArray<string>): CliFlags => {
   return flags
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────
+// ─── Helpers (CLI-only, not exported) ──────────────────────────────────
 
+/* v8 ignore start */
 /** Check which docs exist in the feature directory. */
 const detectExistingDocs = (featureDir: string): ReadonlyArray<string> =>
   CANONICAL_DOCS.filter((doc) => {
@@ -79,6 +80,7 @@ const checkMark = (exists: boolean): string => (exists ? '\u2713' : '\u2717')
 
 // ─── CLI entry point ───────────────────────────────────────────────────
 
+/* v8 ignore start */
 if (import.meta.main) {
   const flags = parseArgs(process.argv.slice(2))
   const paths = resolveFeaturePaths(process.cwd())

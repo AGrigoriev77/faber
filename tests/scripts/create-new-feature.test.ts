@@ -8,7 +8,7 @@ import {
   formatBranchNumber,
   getNextNumber,
   buildFullBranchName,
-} from '../../scripts/ts/create-new-feature.ts'
+} from '../../scripts/create-new-feature.ts'
 
 // ─── STOP_WORDS ───────────────────────────────────────────────────────
 

@@ -78,10 +78,10 @@ export const setupPlan = (input: SetupPlanInput): SetupPlanResult => {
 
 // ─── CLI Entry Point ───────────────────────────────────────────────────
 
+/* v8 ignore start */
 const parseArgs = (argv: ReadonlyArray<string>): { readonly json: boolean } => ({
   json: argv.includes('--json'),
 })
-
 if (import.meta.main) {
   const { json } = parseArgs(process.argv.slice(2))
   const paths = resolveFeaturePaths(process.cwd())

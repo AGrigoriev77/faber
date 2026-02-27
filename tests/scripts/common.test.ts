@@ -6,7 +6,7 @@ import {
   isFeatureBranch,
   buildFeaturePaths,
   findFeatureDirByPrefix,
-} from '../../scripts/ts/common.ts'
+} from '../../scripts/common.ts'
 
 describe('extractBranchNumber', () => {
   it('extracts number from valid feature branch', () => {

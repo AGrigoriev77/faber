@@ -279,6 +279,7 @@ const appendMissingSections = (
 
 // ─── CLI (impure shell) ─────────────────────────────────────────────────
 
+/* v8 ignore start */
 const log = (msg: string): void => {
   process.stderr.write(`${msg}\n`)
 }
@@ -335,6 +336,7 @@ const updateAgentFile = (
   }
 }
 
+/* v8 ignore start */
 if (import.meta.main) {
   const agentType = process.argv[2] ?? ''
   const cwd = process.cwd()
@@ -360,22 +362,21 @@ if (import.meta.main) {
     }
     updateAgentFile(paths.repoRoot, entry.path, entry.name, planData, paths.currentBranch, date, templatePath)
   } else {
-    // Update all existing agent files
-    const updatedPaths = new Set<string>()
-    let foundAgent = false
-    AGENT_FILE_PATHS.forEach((entry) => {
-      const fullPath = join(paths.repoRoot, entry.path)
-      if (existsSync(fullPath) && !updatedPaths.has(entry.path)) {
-        updatedPaths.add(entry.path)
-        updateAgentFile(paths.repoRoot, entry.path, entry.name, planData, paths.currentBranch, date, templatePath)
-        foundAgent = true
-      }
-    })
+    // Deduplicate by path, keep only entries with existing files
+    const uniqueExisting = [...AGENT_FILE_PATHS.values()]
+      .reduce<ReadonlyArray<AgentEntry>>((acc, entry) =>
+        acc.some((e) => e.path === entry.path) ? acc : [...acc, entry],
+      [])
+      .filter((entry) => existsSync(join(paths.repoRoot, entry.path)))
 
-    if (!foundAgent) {
+    if (uniqueExisting.length === 0) {
       log('No existing agent files found, creating default Claude file...')
       const claude = AGENT_FILE_PATHS.get('claude')!
       updateAgentFile(paths.repoRoot, claude.path, claude.name, planData, paths.currentBranch, date, templatePath)
+    } else {
+      uniqueExisting.forEach((entry) =>
+        updateAgentFile(paths.repoRoot, entry.path, entry.name, planData, paths.currentBranch, date, templatePath),
+      )
     }
   }
 

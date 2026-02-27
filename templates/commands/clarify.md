@@ -5,7 +5,7 @@ handoffs:
     agent: faber.plan
     prompt: Create a plan for the spec. I am building with...
 scripts:
-  sh: bun scripts/ts/check-prerequisites.ts --json --paths-only
+  sh: bun scripts/check-prerequisites.ts --json --paths-only
 ---
 
 ## User Input

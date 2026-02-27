@@ -6,7 +6,7 @@ handoffs:
     prompt: All tests are written. Start implementation to make them pass.
     send: true
 scripts:
-  sh: bun scripts/ts/check-prerequisites.ts --json --require-spec
+  sh: bun scripts/check-prerequisites.ts --json --require-spec
 ---
 
 ## User Input

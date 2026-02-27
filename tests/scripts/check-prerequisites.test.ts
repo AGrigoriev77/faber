@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildAvailableDocs } from '../../scripts/ts/check-prerequisites.ts'
+import { buildAvailableDocs } from '../../scripts/check-prerequisites.ts'
 
 // ─── Canonical doc list (same order as the script) ──────────────────────
 // ['research.md', 'data-model.md', 'contracts/', 'quickstart.md', 'tasks.md']

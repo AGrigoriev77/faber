@@ -6,7 +6,7 @@ import {
   setupPlan,
   formatOutput,
   type SetupPlanResult,
-} from '../../scripts/ts/setup-plan.ts'
+} from '../../scripts/setup-plan.ts'
 
 describe('setupPlan', () => {
   let tempDir: string

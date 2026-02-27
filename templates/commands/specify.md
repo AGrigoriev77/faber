@@ -9,7 +9,7 @@ handoffs:
     prompt: Clarify specification requirements
     send: true
 scripts:
-  sh: bun scripts/ts/create-new-feature.ts --json "{ARGS}"
+  sh: bun scripts/create-new-feature.ts --json "{ARGS}"
 ---
 
 ## User Input

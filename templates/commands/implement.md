@@ -1,7 +1,7 @@
 ---
 description: Execute the implementation plan by processing and executing all tasks defined in tasks.md
 scripts:
-  sh: bun scripts/ts/check-prerequisites.ts --json --require-tasks --include-tasks
+  sh: bun scripts/check-prerequisites.ts --json --require-tasks --include-tasks
 ---
 
 ## User Input
