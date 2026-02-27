@@ -77,6 +77,14 @@ describe('isCacheValid', () => {
     const meta: CacheMetadata = { cachedAt: 'not-a-date', catalogUrl: '' }
     expect(isCacheValid(meta, 3600)).toBe(false)
   })
+
+  it('returns false when TTL=0 (always invalid)', () => {
+    const meta: CacheMetadata = {
+      cachedAt: new Date().toISOString(),
+      catalogUrl: 'https://example.com',
+    }
+    expect(isCacheValid(meta, 0)).toBe(false)
+  })
 })
 
 // --- searchExtensions ---
@@ -186,6 +194,17 @@ describe('searchExtensions', () => {
     const results = searchExtensions(catalog, { query: 'nonexistent' })
     expect(results).toHaveLength(0)
   })
+
+  it('filters with 3+ combined filters (query + tag + author + verifiedOnly)', () => {
+    const results = searchExtensions(catalog, {
+      query: 'jira',
+      tag: 'integration',
+      author: 'Alice',
+      verifiedOnly: true,
+    })
+    expect(results).toHaveLength(1)
+    expect(results[0]!.id).toBe('jira-sync')
+  })
 })
 
 // --- getExtensionInfo ---
@@ -223,5 +242,11 @@ describe('validateDownloadUrl', () => {
 
   it('rejects empty string', () => {
     expect(validateDownloadUrl('').isErr()).toBe(true)
+  })
+
+  it('rejects whitespace-only string', () => {
+    const result = validateDownloadUrl('   ')
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('invalid_url')
   })
 })

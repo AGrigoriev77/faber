@@ -38,21 +38,27 @@ type RawData = Record<string, unknown>
 const fieldErr = (field: string, message: string): ManifestError =>
   ({ tag: 'validation', field, message })
 
-export const parseManifest = (yaml: string): Result<RawData, ManifestError> => {
-  try {
-    const data = parseYaml(yaml)
-    if (data === null || data === undefined || typeof data !== 'object' || Array.isArray(data)) {
-      return err({ tag: 'yaml_parse', message: 'YAML must parse to an object' })
-    }
-    return ok(data as RawData)
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    return err({ tag: 'yaml_parse', message })
-  }
+// --- Accumulator types for the validation pipeline ---
+
+interface ValidatedSchema {
+  readonly data: RawData
 }
 
-export const validateManifest = (data: RawData): Result<Manifest, ManifestError> => {
-  // schema_version
+interface ValidatedExtension extends ValidatedSchema {
+  readonly extension: Manifest['extension']
+}
+
+interface ValidatedRequires extends ValidatedExtension {
+  readonly requires: Manifest['requires']
+}
+
+interface ValidatedProvides extends ValidatedRequires {
+  readonly provides: Manifest['provides']
+}
+
+// --- Small pure validator functions ---
+
+const validateSchemaVersion = (data: RawData): Result<ValidatedSchema, ManifestError> => {
   const schemaVersion = data['schema_version']
   if (schemaVersion === undefined || schemaVersion === null) {
     return err(fieldErr('schema_version', 'Missing required field'))
@@ -60,9 +66,11 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
   if (schemaVersion !== SCHEMA_VERSION) {
     return err(fieldErr('schema_version', `Unsupported version: ${schemaVersion} (expected ${SCHEMA_VERSION})`))
   }
+  return ok({ data })
+}
 
-  // extension
-  const ext = data['extension'] as RawData | undefined
+const validateExtensionBlock = (input: ValidatedSchema): Result<ValidatedExtension, ManifestError> => {
+  const ext = input.data['extension'] as RawData | undefined
   if (!ext || typeof ext !== 'object') {
     return err(fieldErr('extension', 'Missing required field'))
   }
@@ -90,18 +98,54 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
     return err(fieldErr('extension.description', 'Missing required field'))
   }
 
-  // requires
-  const requires = data['requires'] as RawData | undefined
+  return ok({
+    ...input,
+    extension: { id: extId, name: extName, version: extVersion, description: extDescription },
+  })
+}
+
+const validateRequiresBlock = (input: ValidatedExtension): Result<ValidatedRequires, ManifestError> => {
+  const requires = input.data['requires'] as RawData | undefined
   if (!requires || typeof requires !== 'object') {
     return err(fieldErr('requires', 'Missing required field'))
   }
+
   const faberVersion = requires['faber_version'] as string | undefined
   if (!faberVersion) {
     return err(fieldErr('requires.faber_version', 'Missing required field'))
   }
 
-  // provides
-  const provides = data['provides'] as RawData | undefined
+  return ok({ ...input, requires: { faberVersion } })
+}
+
+const validateCommand = (cmd: RawData, index: number): Result<ManifestCommand, ManifestError> => {
+  const cmdName = cmd['name'] as string | undefined
+  const cmdFile = cmd['file'] as string | undefined
+
+  if (!cmdName) {
+    return err(fieldErr(`commands[${index}].name`, 'Missing required field'))
+  }
+  if (!cmdFile) {
+    return err(fieldErr(`commands[${index}].file`, 'Missing required field'))
+  }
+  if (!COMMAND_NAME_RE.test(cmdName)) {
+    return err(fieldErr(`commands[${index}].name`, `Invalid format: "${cmdName}". Must match faber.{ext}.{cmd}`))
+  }
+
+  return ok({ name: cmdName, file: cmdFile })
+}
+
+const validateCommands = (rawCommands: ReadonlyArray<RawData>): Result<ReadonlyArray<ManifestCommand>, ManifestError> =>
+  rawCommands.reduce<Result<ReadonlyArray<ManifestCommand>, ManifestError>>(
+    (acc, cmd, index) =>
+      acc.andThen(validated =>
+        validateCommand(cmd, index).map(c => [...validated, c])
+      ),
+    ok([]),
+  )
+
+const validateProvidesBlock = (input: ValidatedRequires): Result<ValidatedProvides, ManifestError> => {
+  const provides = input.data['provides'] as RawData | undefined
   if (!provides || typeof provides !== 'object') {
     return err(fieldErr('provides', 'Missing required field'))
   }
@@ -111,40 +155,38 @@ export const validateManifest = (data: RawData): Result<Manifest, ManifestError>
     return err(fieldErr('provides.commands', 'Must provide at least one command'))
   }
 
-  const validatedCommands: ManifestCommand[] = []
-  for (let i = 0; i < commands.length; i++) {
-    const cmd = commands[i]!
-    const cmdName = cmd['name'] as string | undefined
-    const cmdFile = cmd['file'] as string | undefined
-
-    if (!cmdName) {
-      return err(fieldErr(`commands[${i}].name`, 'Missing required field'))
-    }
-    if (!cmdFile) {
-      return err(fieldErr(`commands[${i}].file`, 'Missing required field'))
-    }
-    if (!COMMAND_NAME_RE.test(cmdName)) {
-      return err(fieldErr(`commands[${i}].name`, `Invalid format: "${cmdName}". Must match faber.{ext}.{cmd}`))
-    }
-    validatedCommands.push({ name: cmdName, file: cmdFile })
-  }
-
-  const hooks = (data['hooks'] ?? {}) as Record<string, unknown>
-
-  return ok({
-    schemaVersion: SCHEMA_VERSION,
-    extension: {
-      id: extId,
-      name: extName,
-      version: extVersion,
-      description: extDescription,
-    },
-    requires: {
-      faberVersion,
-    },
-    provides: {
-      commands: validatedCommands,
-    },
-    hooks,
-  })
+  return validateCommands(commands).map(validatedCommands => ({
+    ...input,
+    provides: { commands: validatedCommands },
+  }))
 }
+
+const buildManifest = (input: ValidatedProvides): Manifest => ({
+  schemaVersion: SCHEMA_VERSION,
+  extension: input.extension,
+  requires: input.requires,
+  provides: input.provides,
+  hooks: (input.data['hooks'] ?? {}) as Readonly<Record<string, unknown>>,
+})
+
+// --- Public API (unchanged) ---
+
+export const parseManifest = (yaml: string): Result<RawData, ManifestError> => {
+  try {
+    const data = parseYaml(yaml)
+    if (data === null || data === undefined || typeof data !== 'object' || Array.isArray(data)) {
+      return err({ tag: 'yaml_parse', message: 'YAML must parse to an object' })
+    }
+    return ok(data as RawData)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return err({ tag: 'yaml_parse', message })
+  }
+}
+
+export const validateManifest = (data: RawData): Result<Manifest, ManifestError> =>
+  validateSchemaVersion(data)
+    .andThen(validateExtensionBlock)
+    .andThen(validateRequiresBlock)
+    .andThen(validateProvidesBlock)
+    .map(buildManifest)

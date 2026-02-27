@@ -49,6 +49,14 @@ describe('deepMerge', () => {
   it('override replaces object with non-object', () => {
     expect(deepMerge({ a: { nested: true } }, { a: 'flat' })).toEqual({ a: 'flat' })
   })
+
+  it('base has null value, override has object → object replaces null', () => {
+    expect(deepMerge({ a: null }, { a: { nested: true } })).toEqual({ a: { nested: true } })
+  })
+
+  it('base has object, override has null → null wins', () => {
+    expect(deepMerge({ a: { nested: true } }, { a: null })).toEqual({ a: null })
+  })
 })
 
 describe('mergeConfigs (4-layer pipe)', () => {
@@ -86,6 +94,18 @@ describe('mergeConfigs (4-layer pipe)', () => {
     const result = mergeConfigs({ a: 1 }, {}, {}, {})
     expect(result).toEqual({ a: 1 })
   })
+
+  it('4 layers with null/undefined/objects in different combinations', () => {
+    const result = mergeConfigs(
+      { a: { b: 1 }, c: 'base' },
+      { a: null },
+      { a: { d: 2 } },
+      { c: undefined },
+    )
+    // After layer 2: a=null. After layer 3: a={d:2} (null+object -> object wins).
+    // After layer 4: c=undefined
+    expect(result).toEqual({ a: { d: 2 }, c: undefined })
+  })
 })
 
 describe('envToConfig', () => {
@@ -121,6 +141,12 @@ describe('envToConfig', () => {
     const config = envToConfig('jira')
     expect(config).toEqual({ timeout: '30' })
   })
+
+  it('nested env var A_B_C builds deep object', () => {
+    vi.stubEnv('SPECKIT_JIRA_A_B_C', 'deep')
+    const config = envToConfig('jira')
+    expect(config).toEqual({ a: { b: { c: 'deep' } } })
+  })
 })
 
 describe('getValue', () => {
@@ -148,6 +174,10 @@ describe('getValue', () => {
   it('returns default for missing key', () => {
     expect(getValue(config, 'missing', 'fallback')).toBe('fallback')
   })
+
+  it('path goes through null intermediate → returns default', () => {
+    expect(getValue({ a: null }, 'a.b', 'default')).toBe('default')
+  })
 })
 
 describe('hasValue', () => {
@@ -170,5 +200,10 @@ describe('hasValue', () => {
 
   it('returns false for missing nested key', () => {
     expect(hasValue(config, 'a.z')).toBe(false)
+  })
+
+  it('key exists with value null → true; key missing → false', () => {
+    expect(hasValue({ a: null }, 'a')).toBe(true)
+    expect(hasValue({}, 'a')).toBe(false)
   })
 })

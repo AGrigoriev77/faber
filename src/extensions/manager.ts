@@ -31,24 +31,26 @@ export interface CommandFile {
 export const compareVersions = (a: string, b: string): number => {
   const pa = a.split('.').map(Number)
   const pb = b.split('.').map(Number)
-  for (let i = 0; i < 3; i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0)
-    if (diff !== 0) return diff
-  }
-  return 0
+  return [0, 1, 2].reduce((result, i) =>
+    result !== 0 ? result : (pa[i] ?? 0) - (pb[i] ?? 0), 0)
 }
+
+// Ordered by prefix length (2-char before 1-char) so ">=" matches before ">"
+const CONSTRAINT_OPS: ReadonlyArray<readonly [string, (cmp: number) => boolean]> = [
+  ['>=', (cmp) => cmp >= 0],
+  ['<=', (cmp) => cmp <= 0],
+  ['!=', (cmp) => cmp !== 0],
+  ['==', (cmp) => cmp === 0],
+  ['>',  (cmp) => cmp > 0],
+  ['<',  (cmp) => cmp < 0],
+]
 
 const satisfiesConstraint = (version: string, constraint: string): boolean => {
   const trimmed = constraint.trim()
-
-  if (trimmed.startsWith('>=')) return compareVersions(version, trimmed.slice(2)) >= 0
-  if (trimmed.startsWith('<=')) return compareVersions(version, trimmed.slice(2)) <= 0
-  if (trimmed.startsWith('!=')) return compareVersions(version, trimmed.slice(2)) !== 0
-  if (trimmed.startsWith('>')) return compareVersions(version, trimmed.slice(1)) > 0
-  if (trimmed.startsWith('<')) return compareVersions(version, trimmed.slice(1)) < 0
-  if (trimmed.startsWith('==')) return compareVersions(version, trimmed.slice(2)) === 0
-
-  return compareVersions(version, trimmed) === 0
+  const match = CONSTRAINT_OPS.find(([prefix]) => trimmed.startsWith(prefix))
+  return match
+    ? match[1](compareVersions(version, trimmed.slice(match[0].length)))
+    : compareVersions(version, trimmed) === 0
 }
 
 // --- Guards ---

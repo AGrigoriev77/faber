@@ -91,6 +91,64 @@ describe('parseCondition', () => {
     const result = parseCondition('  config.a is set  ')
     expect(result.isOk()).toBe(true)
   })
+
+  // --- regex anchor tests (kill ^ and $ removal mutants) ---
+
+  it('rejects config_is_set with prefix text', () => {
+    expect(parseCondition('prefix config.key is set').isErr()).toBe(true)
+  })
+
+  it('rejects config_is_set with suffix text', () => {
+    expect(parseCondition('config.key is set suffix').isErr()).toBe(true)
+  })
+
+  it('accepts config_is_set with multiple spaces', () => {
+    const result = parseCondition('config.key   is   set')
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().tag).toBe('config_is_set')
+  })
+
+  it('rejects config_cmp with prefix text', () => {
+    expect(parseCondition("prefix config.x == 'y'").isErr()).toBe(true)
+  })
+
+  it('rejects config_cmp with suffix text', () => {
+    expect(parseCondition("config.x == 'y' suffix").isErr()).toBe(true)
+  })
+
+  it('accepts config_cmp with no spaces around operator', () => {
+    const result = parseCondition("config.x=='y'")
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().tag).toBe('config_equals')
+  })
+
+  it('rejects env_is_set with prefix text', () => {
+    expect(parseCondition('prefix env.MY_VAR is set').isErr()).toBe(true)
+  })
+
+  it('rejects env_is_set with suffix text', () => {
+    expect(parseCondition('env.MY_VAR is set suffix').isErr()).toBe(true)
+  })
+
+  it('accepts env_is_set with multiple spaces', () => {
+    const result = parseCondition('env.MY_VAR   is   set')
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().tag).toBe('env_is_set')
+  })
+
+  it('rejects env_cmp with prefix text', () => {
+    expect(parseCondition("prefix env.MY_VAR == 'x'").isErr()).toBe(true)
+  })
+
+  it('rejects env_cmp with suffix text', () => {
+    expect(parseCondition("env.MY_VAR == 'x' suffix").isErr()).toBe(true)
+  })
+
+  it('accepts env_cmp with no spaces around operator', () => {
+    const result = parseCondition("env.MY_VAR=='x'")
+    expect(result.isOk()).toBe(true)
+    expect(result._unsafeUnwrap().tag).toBe('env_equals')
+  })
 })
 
 // --- evaluateCondition ---
@@ -167,6 +225,42 @@ describe('evaluateCondition', () => {
     expect(evaluateCondition(cond, { configHas, configGet: configLookup })).toBe(true)
     vi.unstubAllEnvs()
   })
+
+  it('config_not_equals: false when matches', () => {
+    const cond: HookCondition = { tag: 'config_not_equals', keyPath: 'mode', value: 'debug' }
+    expect(evaluateCondition(cond, { configHas, configGet: configLookup })).toBe(false)
+  })
+
+  it('env_equals: false when different', () => {
+    vi.stubEnv('NODE_ENV', 'dev')
+    const cond: HookCondition = { tag: 'env_equals', varName: 'NODE_ENV', value: 'production' }
+    expect(evaluateCondition(cond, { configHas, configGet: configLookup })).toBe(false)
+    vi.unstubAllEnvs()
+  })
+
+  it('env_not_equals: false when matches', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const cond: HookCondition = { tag: 'env_not_equals', varName: 'NODE_ENV', value: 'production' }
+    expect(evaluateCondition(cond, { configHas, configGet: configLookup })).toBe(false)
+    vi.unstubAllEnvs()
+  })
+
+  it('env_equals: uses empty string for missing var', () => {
+    delete process.env['NONEXISTENT_XYZ']
+    const cond: HookCondition = { tag: 'env_equals', varName: 'NONEXISTENT_XYZ', value: '' }
+    expect(evaluateCondition(cond, { configHas, configGet: configLookup })).toBe(true)
+    const cond2: HookCondition = { tag: 'env_equals', varName: 'NONEXISTENT_XYZ', value: 'something' }
+    expect(evaluateCondition(cond2, { configHas, configGet: configLookup })).toBe(false)
+  })
+
+  it('normalize: converts boolean false to "false"', () => {
+    const configGetFalse = (keyPath: string): unknown => {
+      if (keyPath === 'flag') return false
+      return undefined
+    }
+    const cond: HookCondition = { tag: 'config_equals', keyPath: 'flag', value: 'false' }
+    expect(evaluateCondition(cond, { configHas, configGet: configGetFalse })).toBe(true)
+  })
 })
 
 // --- filterEnabledHooks ---
@@ -235,6 +329,17 @@ describe('registerHook', () => {
     const result = registerHook(config, 'after_install', updated)
     expect(result['after_install']).toHaveLength(1)
     expect(result['after_install']![0]!.command).toBe('new.sh')
+  })
+
+  it('updates only the matching extension in a list of hooks', () => {
+    const entry2: HookEntry = { ...entry, extension: 'other-ext', command: 'other.sh' }
+    let config = registerHook(emptyConfig, 'e', entry)
+    config = registerHook(config, 'e', entry2)
+    const updated: HookEntry = { ...entry, command: 'updated.sh' }
+    const result = registerHook(config, 'e', updated)
+    expect(result['e']).toHaveLength(2)
+    expect(result['e']![0]!.command).toBe('updated.sh')
+    expect(result['e']![1]!.command).toBe('other.sh')
   })
 })
 

@@ -58,21 +58,24 @@ export const listExtensions = (
 export const isInstalled = (registry: Registry, id: string): boolean =>
   id in registry.extensions
 
+const parseEntry = (raw: unknown): ExtensionEntry => {
+  const e = raw as Record<string, unknown>
+  return {
+    version: (e['version'] ?? '') as string,
+    source: (e['source'] ?? '') as string,
+    installedAt: (e['installed_at'] ?? e['installedAt'] ?? '') as string,
+  }
+}
+
 export const parseRegistry = (json: string): Result<Registry, never> => {
   try {
     const data = JSON.parse(json)
-    const extensions: Record<string, ExtensionEntry> = {}
-
-    if (data?.extensions && typeof data.extensions === 'object') {
-      for (const [id, raw] of Object.entries(data.extensions)) {
-        const e = raw as Record<string, unknown>
-        extensions[id] = {
-          version: (e['version'] ?? '') as string,
-          source: (e['source'] ?? '') as string,
-          installedAt: (e['installed_at'] ?? e['installedAt'] ?? '') as string,
-        }
-      }
-    }
+    const rawExts = data?.extensions
+    const extensions = rawExts && typeof rawExts === 'object'
+      ? Object.fromEntries(
+          Object.entries(rawExts).map(([id, raw]) => [id, parseEntry(raw)])
+        )
+      : {}
 
     return ok({
       schemaVersion: (data?.['schema_version'] ?? data?.['schemaVersion'] ?? SCHEMA_VERSION) as string,
@@ -84,14 +87,12 @@ export const parseRegistry = (json: string): Result<Registry, never> => {
 }
 
 export const serializeRegistry = (registry: Registry): string => {
-  const extensions: Record<string, Record<string, string>> = {}
-  for (const [id, entry] of Object.entries(registry.extensions)) {
-    extensions[id] = {
-      version: entry.version,
-      source: entry.source,
-      installed_at: entry.installedAt,
-    }
-  }
+  const extensions = Object.fromEntries(
+    Object.entries(registry.extensions).map(([id, entry]) => [
+      id,
+      { version: entry.version, source: entry.source, installed_at: entry.installedAt },
+    ])
+  )
   return JSON.stringify(
     { schema_version: registry.schemaVersion, extensions },
     null,

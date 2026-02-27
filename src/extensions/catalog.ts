@@ -85,27 +85,17 @@ export const isCacheValid = (meta: CacheMetadata, maxAgeSeconds: number = CACHE_
 
 // --- Search ---
 
-export const searchExtensions = (catalog: Catalog, filters: SearchFilters): ReadonlyArray<SearchResult> => {
-  const results: SearchResult[] = []
-
-  for (const [id, entry] of Object.entries(catalog.extensions)) {
-    if (filters.verifiedOnly && !entry.verified) continue
-
-    if (filters.author && entry.author.toLowerCase() !== filters.author.toLowerCase()) continue
-
-    if (filters.tag && !entry.tags.some((t) => t.toLowerCase() === filters.tag!.toLowerCase())) continue
-
-    if (filters.query) {
+export const searchExtensions = (catalog: Catalog, filters: SearchFilters): ReadonlyArray<SearchResult> =>
+  Object.entries(catalog.extensions)
+    .filter(([, entry]) => !filters.verifiedOnly || entry.verified)
+    .filter(([, entry]) => !filters.author || entry.author.toLowerCase() === filters.author.toLowerCase())
+    .filter(([, entry]) => !filters.tag || entry.tags.some((t) => t.toLowerCase() === filters.tag!.toLowerCase()))
+    .filter(([id, entry]) => {
+      if (!filters.query) return true
       const q = filters.query.toLowerCase()
-      const searchable = [entry.name, entry.description, id, ...entry.tags].join(' ').toLowerCase()
-      if (!searchable.includes(q)) continue
-    }
-
-    results.push({ id, ...entry })
-  }
-
-  return results
-}
+      return [entry.name, entry.description, id, ...entry.tags].join(' ').toLowerCase().includes(q)
+    })
+    .map(([id, entry]) => ({ id, ...entry }))
 
 // --- Info ---
 

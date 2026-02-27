@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { join } from 'node:path'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, chmod, writeFile as nodeWriteFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import {
   readFile,
@@ -156,5 +156,25 @@ describe('FsError discriminated union', () => {
       expect(error.path).toBe(path)
       expect(error.message).toBeTruthy()
     }
+  })
+
+  it('EACCES triggers permission tag', async () => {
+    const path = join(tmpDir, 'readonly.txt')
+    await nodeWriteFile(path, 'protected')
+    await chmod(path, 0o444)
+    const result = await writeFile(path, 'overwrite attempt')
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('permission')
+  })
+})
+
+describe('writeJson edge cases', () => {
+  it('returns err for circular reference', async () => {
+    const path = join(tmpDir, 'circular.json')
+    const obj: Record<string, unknown> = { name: 'test' }
+    obj['self'] = obj
+    const result = await writeJson(path, obj)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('io')
   })
 })

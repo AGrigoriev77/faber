@@ -49,8 +49,12 @@ describe('validateInitOptions', () => {
     }
   })
 
-  it('rejects invalid script type', () => {
-    expect(validateInitOptions({ ...valid, script: 'bat' }).isErr()).toBe(true)
+  it('rejects invalid script type with correct error tag and message', () => {
+    const result = validateInitOptions({ ...valid, script: 'bat' })
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(error.tag).toBe('validation')
+    expect(error.message).toContain('bat')
   })
 
   it('accepts sh and ps script types', () => {
@@ -58,8 +62,23 @@ describe('validateInitOptions', () => {
     expect(validateInitOptions({ ...valid, script: 'ps' }).isOk()).toBe(true)
   })
 
-  it('aiSkills requires ai to be set', () => {
-    expect(validateInitOptions({ ...valid, ai: '', aiSkills: true }).isErr()).toBe(true)
+  it('aiSkills requires ai to be set with correct error', () => {
+    const result = validateInitOptions({ ...valid, ai: '', aiSkills: true })
+    expect(result.isErr()).toBe(true)
+    const error = result._unsafeUnwrapErr()
+    expect(error.tag).toBe('validation')
+    expect(error.message).toContain('--ai')
+  })
+
+  it('aiSkills=false + ai="" passes validation', () => {
+    const result = validateInitOptions({ ...valid, ai: '', aiSkills: false, here: true })
+    expect(result.isOk()).toBe(true)
+  })
+
+  it('rejects whitespace-only project name when not --here', () => {
+    const result = validateInitOptions({ ...valid, projectName: '   ', here: false })
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().tag).toBe('validation')
   })
 })
 
@@ -172,5 +191,61 @@ describe('runInit', () => {
     const result = await init(tmp)
     expect(result.isOk()).toBe(true)
     expect(await readdir(join(tmp, '.faber'))).toContain('templates')
+  })
+
+  it('filesCreated is an exact count (6 templates + 1 vscode + 10 commands = 17)', async () => {
+    const dir = join(tmp, 'exact-count')
+    const result = await init(dir)
+    expect(result.isOk()).toBe(true)
+    if (result.isOk()) {
+      // 6 TEMPLATE_FILES + 1 vscode/settings.json + 10 command files
+      expect(result.value.filesCreated).toBe(17)
+    }
+  })
+
+  it('renderAgentCommands: .claude/commands/ contains ONLY .md files', async () => {
+    const dir = join(tmp, 'md-only')
+    await init(dir)
+    const files = await readdir(join(dir, '.claude', 'commands'))
+    expect(files.length).toBeGreaterThan(0)
+    for (const f of files) {
+      expect(f.endsWith('.md')).toBe(true)
+    }
+  })
+
+  it('makeExecutable: .sh files have executable permission', async () => {
+    const dir = join(tmp, 'exec-test')
+    await init(dir, { script: 'sh' })
+
+    // Find all .sh files recursively
+    const findShFiles = async (base: string): Promise<string[]> => {
+      const found: string[] = []
+      const entries = await readdir(base, { withFileTypes: true, recursive: true })
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith('.sh')) {
+          found.push(join(entry.parentPath ?? base, entry.name))
+        }
+      }
+      return found
+    }
+
+    const shFiles = await findShFiles(dir)
+    // If there are .sh files, verify they are executable
+    for (const shFile of shFiles) {
+      const s = await stat(shFile)
+      // Check that executable bit is set (at least user execute 0o100)
+      expect(s.mode & 0o111).toBeGreaterThan(0)
+    }
+  })
+
+  it('init with no ai agent creates no commands directory', async () => {
+    const dir = join(tmp, 'no-ai')
+    await init(dir, { ai: '' })
+    const entries = await readdir(dir, { recursive: true })
+    // No .claude/commands, .gemini/commands, etc.
+    const hasCommandsDir = entries.some((e) =>
+      typeof e === 'string' && e.includes('commands'),
+    )
+    expect(hasCommandsDir).toBe(false)
   })
 })

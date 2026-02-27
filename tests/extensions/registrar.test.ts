@@ -50,6 +50,48 @@ describe('AGENT_FORMATS', () => {
   it('q uses .amazonq/prompts dir', () => {
     expect(AGENT_FORMATS.get('q')!.dir).toBe('.amazonq/prompts')
   })
+
+  it('all agent formats have required fields', () => {
+    for (const [agent, format] of AGENT_FORMATS) {
+      expect(format.dir, `${agent} dir`).toBeTruthy()
+      expect(format.format, `${agent} format`).toMatch(/^(markdown|toml)$/)
+      expect(format.args, `${agent} args`).toBeTruthy()
+      expect(format.extension, `${agent} extension`).toMatch(/^\.\w+$/)
+    }
+  })
+
+  it('each agent entry is a tuple [string, AgentFormat]', () => {
+    const agents = [...AGENT_FORMATS.keys()]
+    expect(agents.length).toBe(16)
+    for (const key of agents) {
+      expect(typeof key).toBe('string')
+      expect(key.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('markdown agents use .md extension and $ARGUMENTS', () => {
+    for (const [, format] of AGENT_FORMATS) {
+      if (format.format === 'markdown') {
+        expect(format.extension).toBe('.md')
+        expect(format.args).toBe('$ARGUMENTS')
+      }
+    }
+  })
+
+  it('toml agents use .toml extension and {{args}}', () => {
+    for (const [, format] of AGENT_FORMATS) {
+      if (format.format === 'toml') {
+        expect(format.extension).toBe('.toml')
+        expect(format.args).toBe('{{args}}')
+      }
+    }
+  })
+
+  it('every dir starts with a dot', () => {
+    for (const [, format] of AGENT_FORMATS) {
+      expect(format.dir.startsWith('.')).toBe(true)
+    }
+  })
 })
 
 describe('getAgentFormat', () => {

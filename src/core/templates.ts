@@ -2,6 +2,11 @@ import { ok, err } from 'neverthrow'
 import type { Result } from 'neverthrow'
 import type { FsError } from '../utils/fs.ts'
 import type { ApiError } from './github.ts'
+import { deepMerge } from '../fp/objects.ts'
+import type { PlainObject } from '../fp/objects.ts'
+import { open as yauzlOpen } from 'yauzl-promise'
+import { join, dirname } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
 
 // --- Types ---
 
@@ -41,32 +46,13 @@ export const flattenPrefix = (entries: ReadonlyArray<string>): ReadonlyArray<str
   return files.map((f) => f.slice(prefix.length))
 }
 
-// --- JSON deep merge ---
+// --- JSON deep merge (delegated to fp/objects.ts) ---
 
 export const mergeJsonObjects = (
   base: Readonly<Record<string, unknown>>,
   update: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> => {
-  const result: Record<string, unknown> = { ...base }
-
-  for (const [key, updateValue] of Object.entries(update)) {
-    const baseValue = result[key]
-
-    if (
-      typeof baseValue === 'object' && baseValue !== null && !Array.isArray(baseValue) &&
-      typeof updateValue === 'object' && updateValue !== null && !Array.isArray(updateValue)
-    ) {
-      result[key] = mergeJsonObjects(
-        baseValue as Record<string, unknown>,
-        updateValue as Record<string, unknown>,
-      )
-    } else {
-      result[key] = updateValue
-    }
-  }
-
-  return result
-}
+): Readonly<Record<string, unknown>> =>
+  deepMerge(base as PlainObject, update as PlainObject)
 
 // --- Special file detection ---
 
@@ -99,8 +85,7 @@ export const extractZip = async (
   destDir: string,
 ): Promise<Result<ReadonlyArray<string>, TemplateError>> => {
   try {
-    const { open } = await import('yauzl-promise')
-    const zipFile = await open(zipPath)
+    const zipFile = await yauzlOpen(zipPath)
     const extractedFiles: string[] = []
 
     try {
@@ -116,12 +101,9 @@ export const extractZip = async (
 
         extractedFiles.push(entry.filename)
 
-        const { join, dirname } = await import('node:path')
-        const { mkdir: mkdirFs, writeFile: writeFileFs } = await import('node:fs/promises')
-
         const targetPath = join(destDir, entry.filename)
-        await mkdirFs(dirname(targetPath), { recursive: true })
-        await writeFileFs(targetPath, content)
+        await mkdir(dirname(targetPath), { recursive: true })
+        await writeFile(targetPath, content)
       }
     } finally {
       await zipFile.close()
@@ -155,12 +137,9 @@ export const downloadAsset = async (
     }
 
     const buffer = await response.arrayBuffer()
-    const { writeFile: writeFileFs } = await import('node:fs/promises')
-    const { dirname } = await import('node:path')
-    const { mkdir: mkdirFs } = await import('node:fs/promises')
 
-    await mkdirFs(dirname(destPath), { recursive: true })
-    await writeFileFs(destPath, Buffer.from(buffer))
+    await mkdir(dirname(destPath), { recursive: true })
+    await writeFile(destPath, Buffer.from(buffer))
 
     return ok(destPath)
   } catch (e) {

@@ -213,6 +213,64 @@ describe('validateManifest', () => {
     expect(result._unsafeUnwrap().provides.commands).toHaveLength(2)
   })
 
+  it('rejects version "1" (single digit, not semver)', () => {
+    const data = {
+      ...validData,
+      extension: { ...validData.extension, version: '1' },
+    }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'extension.version')
+  })
+
+  it('rejects version "abc" (completely invalid)', () => {
+    const data = {
+      ...validData,
+      extension: { ...validData.extension, version: 'abc' },
+    }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'extension.version')
+  })
+
+  it('rejects commands: undefined', () => {
+    const data = { ...validData, provides: { commands: undefined } }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'provides.commands')
+  })
+
+  it('rejects commands: {} (not array)', () => {
+    const data = { ...validData, provides: { commands: {} } }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'provides.commands')
+  })
+
+  it('rejects schema_version: null', () => {
+    const data = { ...validData, schema_version: null }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'schema_version')
+  })
+
+  it('reports name error first when command missing both name AND file', () => {
+    const data = {
+      ...validData,
+      provides: { commands: [{}] },
+    }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'commands[0].name')
+  })
+
+  it('rejects requires.faber_version: "" (empty string)', () => {
+    const data = { ...validData, requires: { faber_version: '' } }
+    const result = validateManifest(data)
+    expect(result.isErr()).toBe(true)
+    expectFieldError(result, 'requires.faber_version')
+  })
+
   test.prop([fc.string().filter(s => /[A-Z_.]/.test(s))])(
     'rejects extension id with uppercase/underscore/dot',
     (id) => {

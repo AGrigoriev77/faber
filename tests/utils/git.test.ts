@@ -2,11 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { join } from 'node:path'
 import { mkdtemp, rm, writeFile as nodeWriteFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import {
   isGitRepo,
   initGitRepo,
   checkTool,
 } from '../../src/utils/git.ts'
+
+const execFileAsync = promisify(execFile)
 
 let tmpDir: string
 
@@ -59,6 +63,13 @@ describe('initGitRepo', () => {
     const result = await initGitRepo(join(tmpDir, 'nope'))
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe('git_error')
+  })
+
+  it('commit message contains "faber"', async () => {
+    await nodeWriteFile(join(tmpDir, 'README.md'), '# test')
+    await initGitRepo(tmpDir)
+    const { stdout } = await execFileAsync('git', ['log', '--oneline', '-1'], { cwd: tmpDir })
+    expect(stdout.toLowerCase()).toContain('faber')
   })
 })
 
