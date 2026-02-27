@@ -48,6 +48,7 @@ interface InitContext {
 // --- Constants ---
 
 const BUNDLED_TEMPLATES_DIR = join(dirname(dirname(import.meta.dirname)), 'templates')
+const BUNDLED_SCRIPTS_DIR = join(dirname(dirname(import.meta.dirname)), 'scripts')
 
 const TEMPLATE_FILES = [
   'spec-template.md',
@@ -107,6 +108,27 @@ const copyTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
             .catch(() => false as const),
         ),
       ).then((results) => results.filter(Boolean).length),
+      (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
+    ))
+    .map((copied) => ({ ...ctx, filesCreated: ctx.filesCreated + copied }))
+}
+
+const copyScripts = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
+  const scriptsDir = join(ctx.opts.projectPath, '.faber', 'scripts')
+
+  return wrap(() => mkdir(scriptsDir, { recursive: true }))
+    .andThen(() => ResultAsync.fromPromise(
+      readdir(BUNDLED_SCRIPTS_DIR)
+        .then((files) => files.filter((f) => f.endsWith('.ts')))
+        .then((tsFiles) =>
+          Promise.all(
+            tsFiles.map((file) =>
+              cp(join(BUNDLED_SCRIPTS_DIR, file), join(scriptsDir, file))
+                .then(() => true as const)
+                .catch(() => false as const),
+            ),
+          ).then((results) => results.filter(Boolean).length),
+        ),
       (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
     ))
     .map((copied) => ({ ...ctx, filesCreated: ctx.filesCreated + copied }))
@@ -174,6 +196,7 @@ export const runInit = (opts: RunInitOptions): ResultAsync<InitResult, InitError
   return okAsync(seed)
     .andThen(createProjectDir)
     .andThen(copyTemplates)
+    .andThen(copyScripts)
     .andThen(copyVscodeSettings)
     .andThen(renderAgentCommands)
     .andThen(initGit)

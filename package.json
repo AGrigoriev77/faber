@@ -4,10 +4,14 @@
   "description": "Spec-Driven Development CLI — specs → plan → tasks → test → code",
   "module": "src/index.ts",
   "type": "module",
-  "private": true,
   "bin": {
     "faber": "src/index.ts"
   },
+  "files": [
+    "src/",
+    "templates/",
+    "scripts/"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",

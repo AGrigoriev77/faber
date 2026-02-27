@@ -87,10 +87,10 @@ export const buildFeaturePaths = (
 const ancestorDirs = (dir: string): ReadonlyArray<string> =>
   dir === dirname(dir) ? [] : [dir, ...ancestorDirs(dirname(dir))]
 
-/** Search upward for `.git` or `.faber` to find repo root. */
+/** Search upward for `.git`, `.faber`, or `.specify` to find repo root. */
 export const findRepoRoot = (startDir: string): string | null =>
   ancestorDirs(startDir).find((d) =>
-    existsSync(join(d, '.git')) || existsSync(join(d, '.specify')),
+    existsSync(join(d, '.git')) || existsSync(join(d, '.faber')) || existsSync(join(d, '.specify')),
   ) ?? null
 
 /** Check if cwd is inside a git repo. */

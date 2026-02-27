@@ -92,6 +92,14 @@ export const renderTomlCommand = (fm: Frontmatter, body: string, extId: string):
 export const convertArgPlaceholder = (content: string, from: string, to: string): string =>
   content.replaceAll(from, to)
 
+const rewriteScriptPath = (value: string): string => {
+  // Legacy: ../../scripts/foo.ts → .faber/scripts/foo.ts
+  if (value.startsWith('../../scripts/')) return `.faber/scripts/${value.slice(14)}`
+  // Current: bun scripts/foo.ts ... → bun .faber/scripts/foo.ts ...
+  if (value.startsWith('bun scripts/')) return `bun .faber/${value.slice(4)}`
+  return value
+}
+
 export const adjustScriptPaths = (fm: Frontmatter): Frontmatter => {
   const scripts = fm['scripts']
   if (!scripts || typeof scripts !== 'object') return fm
@@ -99,7 +107,7 @@ export const adjustScriptPaths = (fm: Frontmatter): Frontmatter => {
   const adjusted = Object.fromEntries(
     Object.entries(scripts as Record<string, string>).map(([key, value]) => [
       key,
-      value.startsWith('../../scripts/') ? `.faber/scripts/${value.slice(14)}` : value,
+      rewriteScriptPath(value),
     ]),
   )
 

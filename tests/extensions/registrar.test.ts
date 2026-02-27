@@ -251,4 +251,32 @@ describe('adjustScriptPaths', () => {
     const fm = { description: 'hello' }
     expect(adjustScriptPaths(fm)).toEqual({ description: 'hello' })
   })
+
+  it('rewrites "bun scripts/" to "bun .faber/scripts/"', () => {
+    const fm = {
+      scripts: { sh: 'bun scripts/create-new-feature.ts --json "{ARGS}"' },
+    }
+    const result = adjustScriptPaths(fm)
+    const scripts = result['scripts'] as Record<string, string>
+    expect(scripts['sh']).toBe('bun .faber/scripts/create-new-feature.ts --json "{ARGS}"')
+  })
+
+  it('rewrites multiple "bun scripts/" entries', () => {
+    const fm = {
+      scripts: {
+        sh: 'bun scripts/setup-plan.ts --json',
+        agent_scripts: 'bun scripts/update-agent-context.ts __AGENT__',
+      },
+    }
+    const result = adjustScriptPaths(fm)
+    const scripts = result['scripts'] as Record<string, string>
+    expect(scripts['sh']).toBe('bun .faber/scripts/setup-plan.ts --json')
+    expect(scripts['agent_scripts']).toBe('bun .faber/scripts/update-agent-context.ts __AGENT__')
+  })
+
+  it('does not rewrite "bun scripts/" in non-scripts frontmatter', () => {
+    const fm = { description: 'bun scripts/foo.ts' }
+    const result = adjustScriptPaths(fm)
+    expect(result['description']).toBe('bun scripts/foo.ts')
+  })
 })

@@ -179,13 +179,25 @@ describe('runInit', () => {
     expect(await readdir(join(tmp, '.faber'))).toContain('templates')
   })
 
-  it('filesCreated is an exact count (6 templates + 1 vscode + 10 commands = 17)', async () => {
+  it('copies scripts into .faber/scripts/', async () => {
+    const dir = join(tmp, 'scripts-test')
+    await init(dir)
+    const files = await readdir(join(dir, '.faber', 'scripts'))
+    expect(files).toContain('common.ts')
+    expect(files).toContain('create-new-feature.ts')
+    expect(files).toContain('check-prerequisites.ts')
+    expect(files).toContain('setup-plan.ts')
+    expect(files).toContain('update-agent-context.ts')
+    expect(files.length).toBe(5)
+  })
+
+  it('filesCreated is an exact count (6 templates + 5 scripts + 1 vscode + 10 commands = 22)', async () => {
     const dir = join(tmp, 'exact-count')
     const result = await init(dir)
     expect(result.isOk()).toBe(true)
     if (result.isOk()) {
-      // 6 TEMPLATE_FILES + 1 vscode/settings.json + 10 command files
-      expect(result.value.filesCreated).toBe(17)
+      // 6 TEMPLATE_FILES + 5 scripts + 1 vscode/settings.json + 10 command files
+      expect(result.value.filesCreated).toBe(22)
     }
   })
 
@@ -245,8 +257,8 @@ describe('runInit', () => {
     const result = await init(tmp, { ai: '' })
     expect(result.isOk()).toBe(true)
     if (result.isOk()) {
-      // Only template files + vscode (7), no commands
-      expect(result.value.filesCreated).toBe(7)
+      // 6 templates + 5 scripts + 1 vscode = 12, no commands
+      expect(result.value.filesCreated).toBe(12)
     }
   })
 })

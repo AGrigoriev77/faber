@@ -19,12 +19,21 @@ Instead of jumping straight to code, faber forces you to think first: what are w
 - **New command `/faber.test`**: test scaffolding generation from acceptance criteria, invariants, failure modes, and state machines
 - **Agents**: 19 supported formats (16 with unique command directories)
 
+## Installation
+
+Requires [Bun](https://bun.sh/) runtime.
+
+```bash
+# From npm (recommended)
+bun install -g faber
+
+# From GitHub directly
+bun install -g git+https://github.com/AGrigoriev77/faber.git
+```
+
 ## Quick Start
 
 ```bash
-# Install
-bun install -g faber
-
 # Initialize a new project
 faber init my-app --ai claude
 
@@ -104,7 +113,8 @@ The command reads the specification and creates test scaffolding:
 ```
 my-app/
 ├── .faber/
-│   └── templates/          # Spec, plan, and task templates
+│   ├── templates/           # Spec, plan, and task templates
+│   └── scripts/             # Automation scripts (branch creation, prerequisites, etc.)
 ├── .claude/commands/        # Slash commands for the selected agent
 │   ├── faber.specify.md
 │   ├── faber.plan.md
@@ -147,7 +157,7 @@ faber version            # Show version
 git clone https://github.com/AGrigoriev77/faber.git
 cd faber
 bun install
-bun test                 # 403 tests
+bun test                 # 733 tests
 bunx tsc --noEmit        # Type check
 ```
 

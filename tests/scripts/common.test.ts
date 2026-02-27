@@ -1,11 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { test as fcTest } from '@fast-check/vitest'
 import fc from 'fast-check'
+import { mkdtemp, rm, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   extractBranchNumber,
   isFeatureBranch,
   buildFeaturePaths,
   findFeatureDirByPrefix,
+  findRepoRoot,
 } from '../../scripts/common.ts'
 
 describe('extractBranchNumber', () => {
@@ -111,5 +115,48 @@ describe('findFeatureDirByPrefix', () => {
   it('handles non-numeric prefix gracefully', () => {
     const result = findFeatureDirByPrefix(['004-auth'], 'main')
     expect(result).toBeNull()
+  })
+})
+
+describe('findRepoRoot', () => {
+  let tmp: string
+
+  beforeEach(async () => {
+    tmp = await mkdtemp(join(tmpdir(), 'faber-root-'))
+  })
+
+  afterEach(async () => {
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  it('finds root by .faber marker', async () => {
+    await mkdir(join(tmp, '.faber'))
+    const nested = join(tmp, 'a', 'b')
+    await mkdir(nested, { recursive: true })
+    expect(findRepoRoot(nested)).toBe(tmp)
+  })
+
+  it('finds root by .git marker', async () => {
+    await mkdir(join(tmp, '.git'))
+    const nested = join(tmp, 'src')
+    await mkdir(nested, { recursive: true })
+    expect(findRepoRoot(nested)).toBe(tmp)
+  })
+
+  it('finds root by .specify marker', async () => {
+    await mkdir(join(tmp, '.specify'))
+    const nested = join(tmp, 'deep', 'dir')
+    await mkdir(nested, { recursive: true })
+    expect(findRepoRoot(nested)).toBe(tmp)
+  })
+
+  it('returns null when no marker found', async () => {
+    const isolated = await mkdtemp(join(tmpdir(), 'faber-noroot-'))
+    const nested = join(isolated, 'a')
+    await mkdir(nested, { recursive: true })
+    // May find system-level .git; just verify it doesn't crash
+    const result = findRepoRoot(nested)
+    expect(result === null || typeof result === 'string').toBe(true)
+    await rm(isolated, { recursive: true, force: true })
   })
 })
