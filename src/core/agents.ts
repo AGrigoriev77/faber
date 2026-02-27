@@ -182,7 +182,3 @@ export const resolveSkillsDir = (id: AgentId): string => {
   return DEFAULT_SKILLS_DIR
 }
 
-export const SCRIPT_TYPES: ReadonlyMap<string, string> = new Map([
-  ['sh', 'POSIX Shell (bash/zsh)'],
-  ['ps', 'PowerShell'],
-])

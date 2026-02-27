@@ -13,7 +13,6 @@ import {
   flattenPrefix,
   mergeJsonObjects,
   shouldMerge,
-  isExecutableScript,
   extractZip,
   downloadAsset,
   apiError,
@@ -26,31 +25,23 @@ import {
 
 describe('assetName', () => {
   it('builds standard asset name', () => {
-    expect(assetName('claude', 'sh')).toBe('faber-template-claude-sh.zip')
+    expect(assetName('claude')).toBe('faber-template-claude.zip')
   })
 
-  it('builds ps asset name', () => {
-    expect(assetName('copilot', 'ps')).toBe('faber-template-copilot-ps.zip')
-  })
-
-  it('builds for any agent/script combo', () => {
-    expect(assetName('gemini', 'sh')).toBe('faber-template-gemini-sh.zip')
+  it('builds for any agent', () => {
+    expect(assetName('gemini')).toBe('faber-template-gemini.zip')
   })
 
   test.prop([
     fc.stringMatching(/^[a-z]{2,10}$/),
-    fc.constantFrom('sh', 'ps'),
-  ])('always ends with .zip', (agent, script) => {
-    expect(assetName(agent, script)).toMatch(/\.zip$/)
+  ])('always ends with .zip', (agent) => {
+    expect(assetName(agent)).toMatch(/\.zip$/)
   })
 
   test.prop([
     fc.stringMatching(/^[a-z]{2,10}$/),
-    fc.constantFrom('sh', 'ps'),
-  ])('contains agent and script type', (agent, script) => {
-    const name = assetName(agent, script)
-    expect(name).toContain(agent)
-    expect(name).toContain(script)
+  ])('contains agent name', (agent) => {
+    expect(assetName(agent)).toContain(agent)
   })
 })
 
@@ -205,34 +196,6 @@ describe('shouldMerge', () => {
 
   it('is case-sensitive', () => {
     expect(shouldMerge('.VSCode/settings.json')).toBe(false)
-  })
-})
-
-// --- isExecutableScript ---
-
-describe('isExecutableScript', () => {
-  it('returns true for .sh files', () => {
-    expect(isExecutableScript('scripts/run.sh')).toBe(true)
-  })
-
-  it('returns true for .bash files', () => {
-    expect(isExecutableScript('scripts/run.bash')).toBe(true)
-  })
-
-  it('returns false for .ps1 files', () => {
-    expect(isExecutableScript('scripts/run.ps1')).toBe(false)
-  })
-
-  it('returns false for .ts files', () => {
-    expect(isExecutableScript('src/index.ts')).toBe(false)
-  })
-
-  it('returns false for .md files', () => {
-    expect(isExecutableScript('README.md')).toBe(false)
-  })
-
-  it('returns true for files in nested paths', () => {
-    expect(isExecutableScript('.faber/scripts/bash/check.sh')).toBe(true)
   })
 })
 

@@ -4,7 +4,6 @@ import {
   isWindows,
   isMac,
   isLinux,
-  scriptExtension,
 } from '../../src/utils/platform.ts'
 
 describe('detectPlatform', () => {
@@ -54,16 +53,6 @@ describe('isWindows / isMac / isLinux', () => {
     expect(isLinux(detectPlatform('linux'))).toBe(true)
     expect(isLinux(detectPlatform('darwin'))).toBe(false)
     expect(isLinux(detectPlatform('win32'))).toBe(false)
-  })
-})
-
-describe('scriptExtension', () => {
-  it('returns .sh for sh script type', () => {
-    expect(scriptExtension('sh')).toBe('.sh')
-  })
-
-  it('returns .ps1 for ps script type', () => {
-    expect(scriptExtension('ps')).toBe('.ps1')
   })
 })
 

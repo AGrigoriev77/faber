@@ -24,8 +24,8 @@ export interface TemplateMetadata {
 
 // --- Asset naming ---
 
-export const assetName = (agent: string, scriptType: string): string =>
-  `faber-template-${agent}-${scriptType}.zip`
+export const assetName = (agent: string): string =>
+  `faber-template-${agent}.zip`
 
 // --- Flatten nested prefix ---
 
@@ -60,9 +60,6 @@ const MERGE_PATHS = new Set(['.vscode/settings.json'])
 
 export const shouldMerge = (relativePath: string): boolean =>
   MERGE_PATHS.has(relativePath)
-
-export const isExecutableScript = (filePath: string): boolean =>
-  filePath.endsWith('.sh') || filePath.endsWith('.bash')
 
 // --- Error constructors (return specific variants for type narrowing) ---
 

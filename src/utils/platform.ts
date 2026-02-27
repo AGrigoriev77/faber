@@ -16,6 +16,3 @@ export const detectPlatform = (platform: string): Platform => {
 export const isWindows = (p: Platform): boolean => p.tag === 'win32'
 export const isMac = (p: Platform): boolean => p.tag === 'darwin'
 export const isLinux = (p: Platform): boolean => p.tag === 'linux'
-
-export const scriptExtension = (scriptType: string): string =>
-  scriptType === 'ps' ? '.ps1' : '.sh'

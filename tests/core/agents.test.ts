@@ -6,7 +6,6 @@ import {
   getAgent,
   agentIds,
   resolveSkillsDir,
-  SCRIPT_TYPES,
   type AgentId,
   type AgentConfig,
 } from '../../src/core/agents.ts'
@@ -142,13 +141,3 @@ describe('resolveSkillsDir', () => {
   })
 })
 
-describe('SCRIPT_TYPES', () => {
-  it('has sh and ps entries', () => {
-    expect(SCRIPT_TYPES.get('sh')).toBe('POSIX Shell (bash/zsh)')
-    expect(SCRIPT_TYPES.get('ps')).toBe('PowerShell')
-  })
-
-  it('has exactly 2 entries', () => {
-    expect(SCRIPT_TYPES.size).toBe(2)
-  })
-})

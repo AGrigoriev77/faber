@@ -32,7 +32,6 @@ export const createProgram = (): Command => {
     .description('Initialize a new faber project')
     .argument('[name]', 'Project name')
     .option('--ai <agent>', `AI assistant (${agentChoices})`)
-    .option('--script <type>', 'Script type: sh or ps', 'sh')
     .option('--here', 'Initialize in current directory', false)
     .option('--no-git', 'Skip git initialization')
     .option('--force', 'Skip confirmations', false)
@@ -42,7 +41,6 @@ export const createProgram = (): Command => {
       validateInitOptions({
         projectName: name ?? '',
         ai: opts.ai ?? '',
-        script: opts.script,
         here: opts.here,
         noGit: !opts.git,
         force: opts.force,
@@ -56,7 +54,6 @@ export const createProgram = (): Command => {
           const initResult = await runInit({
             projectPath,
             ai: validOpts.ai,
-            script: validOpts.script,
             noGit: validOpts.noGit,
             aiSkills: validOpts.aiSkills,
           })

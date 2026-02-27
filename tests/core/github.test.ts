@@ -15,43 +15,42 @@ const makeAsset = (name: string): ReleaseAsset => ({
 
 describe('findAsset', () => {
   const assets: ReadonlyArray<ReleaseAsset> = [
-    makeAsset('spec-kit-template-claude-sh.zip'),
-    makeAsset('spec-kit-template-claude-ps.zip'),
-    makeAsset('spec-kit-template-copilot-sh.zip'),
-    makeAsset('spec-kit-template-gemini-sh.zip'),
+    makeAsset('faber-template-claude.zip'),
+    makeAsset('faber-template-copilot.zip'),
+    makeAsset('faber-template-gemini.zip'),
   ]
 
-  it('finds matching asset by agent and script type', () => {
-    const result = findAsset(assets, 'claude', 'sh')
+  it('finds matching asset by agent', () => {
+    const result = findAsset(assets, 'claude')
     expect(result.isOk()).toBe(true)
-    expect(result._unsafeUnwrap().name).toBe('spec-kit-template-claude-sh.zip')
+    expect(result._unsafeUnwrap().name).toBe('faber-template-claude.zip')
   })
 
-  it('finds ps variant', () => {
-    const result = findAsset(assets, 'claude', 'ps')
+  it('finds copilot asset', () => {
+    const result = findAsset(assets, 'copilot')
     expect(result.isOk()).toBe(true)
-    expect(result._unsafeUnwrap().name).toBe('spec-kit-template-claude-ps.zip')
+    expect(result._unsafeUnwrap().name).toBe('faber-template-copilot.zip')
   })
 
   it('returns err when no match', () => {
-    const result = findAsset(assets, 'qwen', 'sh')
+    const result = findAsset(assets, 'qwen')
     expect(result.isErr()).toBe(true)
     const error = result._unsafeUnwrapErr()
     expect(error.tag).toBe('asset_not_found')
     if (error.tag === 'asset_not_found') {
       expect(error.agent).toBe('qwen')
-      expect(error.availableAssets).toHaveLength(4)
+      expect(error.availableAssets).toHaveLength(3)
     }
   })
 
   it('returns err for empty assets list', () => {
-    const result = findAsset([], 'claude', 'sh')
+    const result = findAsset([], 'claude')
     expect(result.isErr()).toBe(true)
   })
 
   it('only matches .zip files', () => {
-    const nonZip = [makeAsset('spec-kit-template-claude-sh.tar.gz')]
-    const result = findAsset(nonZip, 'claude', 'sh')
+    const nonZip = [makeAsset('faber-template-claude.tar.gz')]
+    const result = findAsset(nonZip, 'claude')
     expect(result.isErr()).toBe(true)
   })
 })

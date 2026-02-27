@@ -1,19 +1,17 @@
 import { join, dirname, basename } from 'node:path'
-import { readdir, readFile, writeFile, mkdir, chmod, cp } from 'node:fs/promises'
+import { readdir, readFile, writeFile, mkdir, cp } from 'node:fs/promises'
 import { ok, err, okAsync, ResultAsync } from 'neverthrow'
 import type { Result } from 'neverthrow'
 import { AGENTS } from '../core/agents.ts'
 import { AGENT_FORMATS } from '../extensions/registrar.ts'
 import { renderCommandForAgent } from '../extensions/manager.ts'
 import { initGitRepo } from '../utils/git.ts'
-import { isExecutableScript } from '../core/templates.ts'
 
 // --- Types ---
 
 export interface InitOptions {
   readonly projectName: string
   readonly ai: string
-  readonly script: string
   readonly here: boolean
   readonly noGit: boolean
   readonly force: boolean
@@ -25,7 +23,6 @@ export interface InitOptions {
 export interface RunInitOptions {
   readonly projectPath: string
   readonly ai: string
-  readonly script: string
   readonly noGit: boolean
   readonly aiSkills: boolean
 }
@@ -50,8 +47,6 @@ interface InitContext {
 
 // --- Constants ---
 
-const VALID_SCRIPT_TYPES = new Set(['sh', 'ps'])
-
 const BUNDLED_TEMPLATES_DIR = join(dirname(dirname(import.meta.dirname)), 'templates')
 
 const TEMPLATE_FILES = [
@@ -75,11 +70,6 @@ const checkAgent = (opts: InitOptions): Result<InitOptions, InitError> =>
     ? err({ tag: 'validation', message: `Unknown AI agent: ${opts.ai}` })
     : ok(opts)
 
-const checkScriptType = (opts: InitOptions): Result<InitOptions, InitError> =>
-  !VALID_SCRIPT_TYPES.has(opts.script)
-    ? err({ tag: 'validation', message: `Invalid script type: ${opts.script}. Use sh or ps` })
-    : ok(opts)
-
 const checkAiSkills = (opts: InitOptions): Result<InitOptions, InitError> =>
   opts.aiSkills && !opts.ai
     ? err({ tag: 'validation', message: '--ai-skills requires --ai to be set' })
@@ -89,7 +79,6 @@ export const validateInitOptions = (opts: InitOptions): Result<InitOptions, Init
   ok(opts)
     .andThen(checkProjectName)
     .andThen(checkAgent)
-    .andThen(checkScriptType)
     .andThen(checkAiSkills)
 
 export const resolveProjectPath = (name: string, here: boolean, cwd: string): string =>
@@ -168,21 +157,6 @@ const renderAgentCommands = (ctx: InitContext): ResultAsync<InitContext, InitErr
     .orElse(() => okAsync(ctx))
 }
 
-const makeExecutable = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
-  ResultAsync.fromPromise(
-    readdir(ctx.opts.projectPath, { withFileTypes: true, recursive: true })
-      .then((entries) =>
-        Promise.all(
-          entries
-            .filter((entry) => entry.isFile() && isExecutableScript(entry.name))
-            .map((entry) => chmod(join(entry.parentPath ?? ctx.opts.projectPath, entry.name), 0o755)),
-        ),
-      ),
-    (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
-  )
-    .map(() => ctx)
-    .orElse(() => okAsync(ctx))
-
 const initGit = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
   if (ctx.opts.noGit) return okAsync(ctx)
 
@@ -202,7 +176,6 @@ export const runInit = (opts: RunInitOptions): ResultAsync<InitResult, InitError
     .andThen(copyTemplates)
     .andThen(copyVscodeSettings)
     .andThen(renderAgentCommands)
-    .andThen(makeExecutable)
     .andThen(initGit)
     .map((ctx) => ({
       projectPath: ctx.opts.projectPath,

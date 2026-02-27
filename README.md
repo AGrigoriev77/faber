@@ -134,7 +134,6 @@ faber templates embed eight defensive mechanisms into the development process:
 ```bash
 faber init [name]        # Initialize a project
   --ai <agent>           # AI agent (claude, copilot, gemini, cursor...)
-  --script <sh|ps>       # Script type (bash or powershell)
   --here                 # Initialize in the current directory
   --no-git               # Skip git init
 

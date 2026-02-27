@@ -16,7 +16,7 @@ export type ApiError =
   | { readonly tag: 'http'; readonly status: number; readonly url: string; readonly message: string }
   | { readonly tag: 'network'; readonly message: string }
   | { readonly tag: 'parse'; readonly message: string }
-  | { readonly tag: 'asset_not_found'; readonly agent: string; readonly scriptType: string; readonly availableAssets: ReadonlyArray<string> }
+  | { readonly tag: 'asset_not_found'; readonly agent: string; readonly availableAssets: ReadonlyArray<string> }
 
 type FetchFn = (url: string, init: RequestInit) => Promise<Response>
 
@@ -92,9 +92,8 @@ export const fetchLatestRelease = async (options: FetchOptions): Promise<Result<
 export const findAsset = (
   assets: ReadonlyArray<ReleaseAsset>,
   agent: string,
-  scriptType: string,
 ): Result<ReleaseAsset, ApiError> => {
-  const pattern = `spec-kit-template-${agent}-${scriptType}`
+  const pattern = `faber-template-${agent}`
   const match = assets.find((a) => a.name.includes(pattern) && a.name.endsWith('.zip'))
 
   return match
@@ -102,7 +101,6 @@ export const findAsset = (
     : err({
         tag: 'asset_not_found',
         agent,
-        scriptType,
         availableAssets: assets.map((a) => a.name),
       })
 }

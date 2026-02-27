@@ -32,13 +32,6 @@ describe('createProgram', () => {
     expect(aiOpt).toBeDefined()
   })
 
-  it('init has --script option', () => {
-    const program = createProgram()
-    const initCmd = program.commands.find((c) => c.name() === 'init')!
-    const scriptOpt = initCmd.options.find((o) => o.long === '--script')
-    expect(scriptOpt).toBeDefined()
-  })
-
   it('init has --here option', () => {
     const program = createProgram()
     const initCmd = program.commands.find((c) => c.name() === 'init')!

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtemp, rm, readdir, readFile, stat, writeFile, chmod, mkdir } from 'node:fs/promises'
+import { mkdtemp, rm, readdir, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -16,7 +16,6 @@ describe('validateInitOptions', () => {
   const valid: InitOptions = {
     projectName: 'my-project',
     ai: 'claude',
-    script: 'sh',
     here: false,
     noGit: false,
     force: false,
@@ -47,19 +46,6 @@ describe('validateInitOptions', () => {
     for (const agent of ['claude', 'copilot', 'gemini', 'cursor-agent', 'generic']) {
       expect(validateInitOptions({ ...valid, ai: agent }).isOk()).toBe(true)
     }
-  })
-
-  it('rejects invalid script type with correct error tag and message', () => {
-    const result = validateInitOptions({ ...valid, script: 'bat' })
-    expect(result.isErr()).toBe(true)
-    const error = result._unsafeUnwrapErr()
-    expect(error.tag).toBe('validation')
-    expect(error.message).toContain('bat')
-  })
-
-  it('accepts sh and ps script types', () => {
-    expect(validateInitOptions({ ...valid, script: 'sh' }).isOk()).toBe(true)
-    expect(validateInitOptions({ ...valid, script: 'ps' }).isOk()).toBe(true)
   })
 
   it('aiSkills requires ai to be set with correct error', () => {
@@ -113,7 +99,7 @@ describe('runInit', () => {
     await rm(tmp, { recursive: true, force: true })
   })
 
-  const defaults: RunInitOptions = { projectPath: '', ai: 'claude', script: 'sh', noGit: true, aiSkills: false }
+  const defaults: RunInitOptions = { projectPath: '', ai: 'claude', noGit: true, aiSkills: false }
 
   const init = (dir: string, overrides: Partial<RunInitOptions> = {}) =>
     runInit({ ...defaults, projectPath: dir, ...overrides })
@@ -213,31 +199,6 @@ describe('runInit', () => {
     }
   })
 
-  it('makeExecutable: .sh files have executable permission', async () => {
-    const dir = join(tmp, 'exec-test')
-    await init(dir, { script: 'sh' })
-
-    // Find all .sh files recursively
-    const findShFiles = async (base: string): Promise<string[]> => {
-      const found: string[] = []
-      const entries = await readdir(base, { withFileTypes: true, recursive: true })
-      for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith('.sh')) {
-          found.push(join(entry.parentPath ?? base, entry.name))
-        }
-      }
-      return found
-    }
-
-    const shFiles = await findShFiles(dir)
-    // If there are .sh files, verify they are executable
-    for (const shFile of shFiles) {
-      const s = await stat(shFile)
-      // Check that executable bit is set (at least user execute 0o100)
-      expect(s.mode & 0o111).toBeGreaterThan(0)
-    }
-  })
-
   it('init with no ai agent creates no commands directory', async () => {
     const dir = join(tmp, 'no-ai')
     await init(dir, { ai: '' })
@@ -278,37 +239,6 @@ describe('runInit', () => {
     const result = await init('/dev/null/impossible/project')
     expect(result.isErr()).toBe(true)
     expect(result._unsafeUnwrapErr().tag).toBe('fs')
-  })
-
-  it('makeExecutable: chmod is applied to pre-existing .sh files', async () => {
-    // Pre-create a .sh file with non-executable permissions
-    const shFile = join(tmp, 'deploy.sh')
-    await writeFile(shFile, '#!/bin/bash\necho deploy')
-    await chmod(shFile, 0o644)
-
-    // Verify it starts without execute bit
-    const before = await stat(shFile)
-    expect(before.mode & 0o111).toBe(0)
-
-    // Run init in --here mode — makeExecutable will find and chmod this file
-    await init(tmp)
-
-    // Verify execute bit was set
-    const after = await stat(shFile)
-    expect(after.mode & 0o111).toBeGreaterThan(0)
-  })
-
-  it('makeExecutable: chmod is applied to nested .bash files', async () => {
-    const scriptsDir = join(tmp, 'scripts')
-    await mkdir(scriptsDir, { recursive: true })
-    const bashFile = join(scriptsDir, 'run.bash')
-    await writeFile(bashFile, '#!/bin/bash\necho run')
-    await chmod(bashFile, 0o644)
-
-    await init(tmp)
-
-    const s = await stat(bashFile)
-    expect(s.mode & 0o111).toBeGreaterThan(0)
   })
 
   it('works with ai="" and here=true — no agent commands', async () => {
