@@ -1,6 +1,6 @@
 import { join } from 'node:path'
-import { ok, err } from 'neverthrow'
-import type { ResultAsync } from 'neverthrow'
+import { ok, err, okAsync, errAsync, ResultAsync } from 'neverthrow'
+import type { Result } from 'neverthrow'
 import { readFile, writeFile, exists, mkdir } from '../../utils/fs.ts'
 import type { FsError } from '../../utils/fs.ts'
 import { parseRegistry, serializeRegistry, emptyRegistry } from '../../extensions/registry.ts'
@@ -38,7 +38,28 @@ export const registryPath = (cwd: string): string => join(cwd, FABER_DIR, EXTENS
 export const extensionsDir = (cwd: string): string => join(cwd, FABER_DIR, EXTENSIONS_DIR)
 export const manifestPath = (dir: string): string => join(dir, MANIFEST_FILE)
 
-// --- Project check ---
+// --- fs.ts adapter ---
+// Converts Promise<Result<T, FsError>> → ResultAsync<T, ExtensionCommandError>
+
+const wrapFs = <T>(
+  op: Promise<Result<T, FsError>>,
+  mapErr: (e: FsError) => ExtensionCommandError,
+): ResultAsync<T, ExtensionCommandError> =>
+  ResultAsync.fromPromise(
+    op.then((r) =>
+      r.match(
+        (value) => value,
+        (error) => { throw error },
+      ),
+    ),
+    (e) => mapErr(e as FsError),
+  )
+
+// Wrap sync Result<T, E> → ResultAsync<T, E>
+const liftResult = <T, E>(r: Result<T, E>): ResultAsync<T, E> =>
+  r.isOk() ? okAsync(r.value) : errAsync(r.error)
+
+// --- FsError → message ---
 
 const fsErrorMessage = (e: FsError): string => {
   switch (e.tag) {
@@ -50,73 +71,61 @@ const fsErrorMessage = (e: FsError): string => {
   }
 }
 
-export const checkFaberProject = async (cwd: string): Promise<ResultAsync<string, ExtensionCommandError>> => {
-  const result = await exists(faberDir(cwd))
-  if (result.isErr()) {
-    return err({ tag: 'fs', path: cwd, message: fsErrorMessage(result.error) })
-  }
-  return result.value
-    ? ok(cwd)
-    : err({ tag: 'not_a_project', path: cwd })
-}
+// --- Project check ---
+
+export const checkFaberProject = (cwd: string): ResultAsync<string, ExtensionCommandError> =>
+  wrapFs<boolean>(
+    exists(faberDir(cwd)),
+    (e) => ({ tag: 'fs', path: cwd, message: fsErrorMessage(e) }),
+  ).andThen((found) =>
+    found ? okAsync(cwd) : errAsync({ tag: 'not_a_project' as const, path: cwd }),
+  )
 
 // --- Registry I/O ---
 
-export const loadRegistry = async (cwd: string): Promise<ResultAsync<Registry, ExtensionCommandError>> => {
+export const loadRegistry = (cwd: string): ResultAsync<Registry, ExtensionCommandError> => {
   const regPath = registryPath(cwd)
-  const fileResult = await readFile(regPath)
-
-  if (fileResult.isErr()) {
-    if (fileResult.error.tag === 'not_found') {
-      return ok(emptyRegistry())
-    }
-    return err({ tag: 'registry_io', path: regPath, message: fsErrorMessage(fileResult.error) })
-  }
-
-  const parsed = parseRegistry(fileResult.value)
-  // parseRegistry always returns ok
-  return ok(parsed._unsafeUnwrap())
+  return wrapFs<string>(
+    readFile(regPath),
+    (e) =>
+      e.tag === 'not_found'
+        ? { tag: 'not_found' as const, id: regPath }
+        : { tag: 'registry_io' as const, path: regPath, message: fsErrorMessage(e) },
+  )
+    .andThen((content) => liftResult(parseRegistry(content)))
+    .orElse((e) =>
+      e.tag === 'not_found' ? ok(emptyRegistry()) : err(e),
+    )
 }
 
-export const saveRegistry = async (cwd: string, registry: Registry): Promise<ResultAsync<void, ExtensionCommandError>> => {
+export const saveRegistry = (cwd: string, registry: Registry): ResultAsync<void, ExtensionCommandError> => {
   const extDir = extensionsDir(cwd)
-  const mkdirResult = await mkdir(extDir)
-  if (mkdirResult.isErr()) {
-    return err({ tag: 'fs', path: extDir, message: fsErrorMessage(mkdirResult.error) })
-  }
-
   const regPath = registryPath(cwd)
-  const content = serializeRegistry(registry)
-  const writeResult = await writeFile(regPath, content)
-
-  if (writeResult.isErr()) {
-    return err({ tag: 'registry_io', path: regPath, message: fsErrorMessage(writeResult.error) })
-  }
-
-  return ok(undefined)
+  return wrapFs<void>(
+    mkdir(extDir),
+    (e) => ({ tag: 'fs', path: extDir, message: fsErrorMessage(e) }),
+  ).andThen(() =>
+    wrapFs<void>(
+      writeFile(regPath, serializeRegistry(registry)),
+      (e) => ({ tag: 'registry_io', path: regPath, message: fsErrorMessage(e) }),
+    ),
+  )
 }
 
 // --- Manifest I/O ---
 
-export const loadManifestFromDir = async (dir: string): Promise<ResultAsync<Manifest, ExtensionCommandError>> => {
+export const loadManifestFromDir = (dir: string): ResultAsync<Manifest, ExtensionCommandError> => {
   const mPath = manifestPath(dir)
-  const fileResult = await readFile(mPath)
-
-  if (fileResult.isErr()) {
-    return err({ tag: 'manifest_io', path: mPath, message: fsErrorMessage(fileResult.error) })
-  }
-
-  const parsed = parseManifest(fileResult.value)
-  if (parsed.isErr()) {
-    return err(mapManifestError(parsed.error))
-  }
-
-  const validated = validateManifest(parsed.value)
-  if (validated.isErr()) {
-    return err(mapManifestError(validated.error))
-  }
-
-  return ok(validated.value)
+  return wrapFs<string>(
+    readFile(mPath),
+    (e) => ({ tag: 'manifest_io', path: mPath, message: fsErrorMessage(e) }),
+  ).andThen((content) =>
+    liftResult(
+      parseManifest(content)
+        .andThen(validateManifest)
+        .mapErr(mapManifestError),
+    ),
+  )
 }
 
 // --- Error mappers ---

@@ -1,6 +1,6 @@
 import * as nodeFs from 'node:fs/promises'
 import { ok, err } from 'neverthrow'
-import type { ResultAsync } from 'neverthrow'
+import type { Result } from 'neverthrow'
 
 export type FsError =
   | { readonly tag: 'not_found'; readonly path: string }
@@ -17,7 +17,7 @@ const toFsError = (e: unknown, path: string): FsError => {
   return { tag: 'io', path, message }
 }
 
-export const readFile = async (path: string): Promise<ResultAsync<string, FsError>> => {
+export const readFile = async (path: string): Promise<Result<string, FsError>> => {
   try {
     const content = await nodeFs.readFile(path, 'utf-8')
     return ok(content)
@@ -26,7 +26,7 @@ export const readFile = async (path: string): Promise<ResultAsync<string, FsErro
   }
 }
 
-export const writeFile = async (path: string, content: string): Promise<ResultAsync<void, FsError>> => {
+export const writeFile = async (path: string, content: string): Promise<Result<void, FsError>> => {
   try {
     await nodeFs.writeFile(path, content, 'utf-8')
     return ok(undefined)
@@ -35,7 +35,7 @@ export const writeFile = async (path: string, content: string): Promise<ResultAs
   }
 }
 
-export const mkdir = async (path: string): Promise<ResultAsync<void, FsError>> => {
+export const mkdir = async (path: string): Promise<Result<void, FsError>> => {
   try {
     await nodeFs.mkdir(path, { recursive: true })
     return ok(undefined)
@@ -44,7 +44,7 @@ export const mkdir = async (path: string): Promise<ResultAsync<void, FsError>> =
   }
 }
 
-export const exists = async (path: string): Promise<ResultAsync<boolean, FsError>> => {
+export const exists = async (path: string): Promise<Result<boolean, FsError>> => {
   try {
     await nodeFs.access(path)
     return ok(true)
@@ -56,7 +56,7 @@ export const exists = async (path: string): Promise<ResultAsync<boolean, FsError
   }
 }
 
-export const copyFile = async (src: string, dest: string): Promise<ResultAsync<void, FsError>> => {
+export const copyFile = async (src: string, dest: string): Promise<Result<void, FsError>> => {
   try {
     await nodeFs.copyFile(src, dest)
     return ok(undefined)
@@ -65,19 +65,19 @@ export const copyFile = async (src: string, dest: string): Promise<ResultAsync<v
   }
 }
 
-export const readJson = async (path: string): Promise<ResultAsync<unknown, FsError>> => {
+export const readJson = async (path: string): Promise<Result<unknown, FsError>> => {
   const content = await readFile(path)
-  if (content.isErr()) return err(content.error)
-
-  try {
-    return ok(JSON.parse(content.value))
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    return err({ tag: 'parse', path, message })
-  }
+  return content.andThen((text) => {
+    try {
+      return ok(JSON.parse(text))
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      return err({ tag: 'parse' as const, path, message })
+    }
+  })
 }
 
-export const writeJson = async (path: string, data: unknown): Promise<ResultAsync<void, FsError>> => {
+export const writeJson = async (path: string, data: unknown): Promise<Result<void, FsError>> => {
   try {
     const content = JSON.stringify(data, null, 2) + '\n'
     return writeFile(path, content)

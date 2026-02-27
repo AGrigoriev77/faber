@@ -1,5 +1,4 @@
-import { ok, err } from 'neverthrow'
-import type { Result } from 'neverthrow'
+import type { ResultAsync } from 'neverthrow'
 import { checkFaberProject, loadRegistry, type ExtensionCommandError } from './common.ts'
 import { listExtensions } from '../../extensions/registry.ts'
 import type { ExtensionEntry } from '../../extensions/registry.ts'
@@ -33,15 +32,12 @@ export const formatExtensionList = (
 
 // --- Pipeline ---
 
-export const runExtensionList = async (
+export const runExtensionList = (
   opts: ExtensionListOptions,
-): Promise<Result<ExtensionListResult, ExtensionCommandError>> => {
-  const projectResult = await checkFaberProject(opts.cwd)
-  if (projectResult.isErr()) return err(projectResult.error)
-
-  const registryResult = await loadRegistry(opts.cwd)
-  if (registryResult.isErr()) return err(registryResult.error)
-
-  const entries = listExtensions(registryResult.value)
-  return ok({ entries, formatted: formatExtensionList(entries) })
-}
+): ResultAsync<ExtensionListResult, ExtensionCommandError> =>
+  checkFaberProject(opts.cwd)
+    .andThen(() => loadRegistry(opts.cwd))
+    .map((registry) => {
+      const entries = listExtensions(registry)
+      return { entries, formatted: formatExtensionList(entries) }
+    })

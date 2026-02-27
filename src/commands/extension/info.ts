@@ -1,4 +1,3 @@
-import { ok, err } from 'neverthrow'
 import type { Result } from 'neverthrow'
 import { mapCatalogError, type ExtensionCommandError } from './common.ts'
 import { getExtensionInfo } from '../../extensions/catalog.ts'
@@ -40,18 +39,10 @@ export const formatExtensionInfo = (info: SearchResult, installed: boolean): str
 
 export const runExtensionInfo = (
   opts: ExtensionInfoOptions,
-): Result<ExtensionInfoResult, ExtensionCommandError> => {
-  const infoResult = getExtensionInfo(opts.catalog, opts.id)
-  if (infoResult.isErr()) {
-    return err(mapCatalogError(infoResult.error))
-  }
-
-  const info = infoResult.value
-  const installed = isInstalled(opts.registry, opts.id)
-
-  return ok({
-    info,
-    installed,
-    formatted: formatExtensionInfo(info, installed),
-  })
-}
+): Result<ExtensionInfoResult, ExtensionCommandError> =>
+  getExtensionInfo(opts.catalog, opts.id)
+    .mapErr(mapCatalogError)
+    .map((info) => {
+      const installed = isInstalled(opts.registry, opts.id)
+      return { info, installed, formatted: formatExtensionInfo(info, installed) }
+    })

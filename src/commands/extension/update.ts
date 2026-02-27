@@ -1,5 +1,4 @@
-import { ok, err } from 'neverthrow'
-import type { Result } from 'neverthrow'
+import type { ResultAsync } from 'neverthrow'
 import {
   checkFaberProject,
   loadRegistry,
@@ -34,16 +33,12 @@ export const findAvailableUpdates = (
   installed: ReadonlyArray<readonly [string, { readonly version: string }]>,
   catalog: Catalog,
 ): ReadonlyArray<UpdateAvailable> =>
-  installed
-    .map(([id, entry]) => {
-      const catalogEntry = catalog.extensions[id]
-      if (!catalogEntry) return null
-      if (compareVersions(catalogEntry.version, entry.version) > 0) {
-        return { id, currentVersion: entry.version, latestVersion: catalogEntry.version }
-      }
-      return null
-    })
-    .filter((u): u is UpdateAvailable => u !== null)
+  installed.flatMap(([id, entry]) => {
+    const catalogEntry = catalog.extensions[id]
+    return catalogEntry && compareVersions(catalogEntry.version, entry.version) > 0
+      ? [{ id, currentVersion: entry.version, latestVersion: catalogEntry.version }]
+      : []
+  })
 
 export const formatUpdateResults = (updates: ReadonlyArray<UpdateAvailable>): string => {
   if (updates.length === 0) {
@@ -58,23 +53,13 @@ export const formatUpdateResults = (updates: ReadonlyArray<UpdateAvailable>): st
 
 // --- Pipeline ---
 
-export const runExtensionUpdate = async (
+export const runExtensionUpdate = (
   opts: ExtensionUpdateOptions,
-): Promise<Result<ExtensionUpdateResult, ExtensionCommandError>> => {
-  // 1. Check faber project
-  const projectResult = await checkFaberProject(opts.cwd)
-  if (projectResult.isErr()) return err(projectResult.error)
-
-  // 2. Load registry
-  const registryResult = await loadRegistry(opts.cwd)
-  if (registryResult.isErr()) return err(registryResult.error)
-
-  // 3. Compare versions
-  const installed = listExtensions(registryResult.value)
-  const updates = findAvailableUpdates(installed, opts.catalog)
-
-  return ok({
-    updates,
-    formatted: formatUpdateResults(updates),
-  })
-}
+): ResultAsync<ExtensionUpdateResult, ExtensionCommandError> =>
+  checkFaberProject(opts.cwd)
+    .andThen(() => loadRegistry(opts.cwd))
+    .map((registry) => {
+      const installed = listExtensions(registry)
+      const updates = findAvailableUpdates(installed, opts.catalog)
+      return { updates, formatted: formatUpdateResults(updates) }
+    })
