@@ -1,12 +1,20 @@
 import { join, dirname, basename } from 'node:path'
-import { readdir, readFile, writeFile, mkdir, cp } from 'node:fs/promises'
+import { readdir, readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { ok, err, okAsync, ResultAsync } from 'neverthrow'
 import type { Result } from 'neverthrow'
 import { AGENTS } from '../core/agents.ts'
 import { AGENT_FORMATS } from '../extensions/registrar.ts'
 import { renderCommandForAgent } from '../extensions/manager.ts'
 import { initGitRepo } from '../utils/git.ts'
+import { downloadAsset, extractZip } from '../core/templates.ts'
+import type { TemplateError } from '../core/templates.ts'
+import { fetchLatestRelease } from '../core/github.ts'
+import type { ApiError } from '../core/github.ts'
+import { assertNever } from '../fp/types.ts'
 import { EXPECTED_TEMPLATES } from './check.ts'
+
+export { EXPECTED_TEMPLATES }
 
 // --- Types ---
 
@@ -46,12 +54,27 @@ interface InitContext {
   readonly filesCreated: number
 }
 
-// --- Constants ---
+// --- Error mapping ---
 
-const BUNDLED_TEMPLATES_DIR = join(dirname(dirname(import.meta.dirname)), 'templates')
-const BUNDLED_SCRIPTS_DIR = join(dirname(dirname(import.meta.dirname)), 'scripts')
+const apiErrToInit = (e: ApiError): InitError => {
+  switch (e.tag) {
+    case 'http': return { tag: 'download', message: `HTTP ${e.status}: ${e.message}` }
+    case 'network': return { tag: 'download', message: e.message }
+    case 'parse': return { tag: 'download', message: `Parse error: ${e.message}` }
+    case 'asset_not_found': return { tag: 'download', message: `Asset not found: ${e.agent}` }
+    default: return assertNever(e)
+  }
+}
 
-const TEMPLATE_FILES = EXPECTED_TEMPLATES
+const templateErrToInit = (e: TemplateError): InitError => {
+  switch (e.tag) {
+    case 'api': return apiErrToInit(e.inner)
+    case 'fs': return { tag: 'download', message: e.inner.tag === 'not_found' ? `File not found: ${e.inner.path}` : e.inner.message }
+    case 'zip': return { tag: 'download', message: e.message }
+    case 'merge': return { tag: 'download', message: e.message }
+    default: return assertNever(e)
+  }
+}
 
 // --- Pure validation ---
 
@@ -90,47 +113,40 @@ const wrap = (fn: () => Promise<unknown>): ResultAsync<void, InitError> =>
 const createProjectDir = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
   wrap(() => mkdir(ctx.opts.projectPath, { recursive: true })).map(() => ctx)
 
-const copyTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
-  const templatesDir = join(ctx.opts.projectPath, '.faber', 'templates')
+const downloadAndExtractTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
+  const faberDir = join(ctx.opts.projectPath, '.faber')
+  const tmpZip = join(tmpdir(), `faber-templates-${Date.now()}.zip`)
 
-  return wrap(() => mkdir(templatesDir, { recursive: true }))
-    .andThen(() => ResultAsync.fromPromise(
-      Promise.all(
-        TEMPLATE_FILES.map((file) =>
-          cp(join(BUNDLED_TEMPLATES_DIR, file), join(templatesDir, file))
-            .then(() => true as const)
-            .catch(() => false as const),
-        ),
-      ).then((results) => results.filter(Boolean).length),
-      (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
-    ))
-    .map((copied) => ({ ...ctx, filesCreated: ctx.filesCreated + copied }))
-}
+  const release = new ResultAsync(
+    fetchLatestRelease({ fetch: globalThis.fetch }).then((r) => r.mapErr(apiErrToInit)),
+  )
 
-const copyScripts = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
-  const scriptsDir = join(ctx.opts.projectPath, '.faber', 'scripts')
-
-  return wrap(() => mkdir(scriptsDir, { recursive: true }))
-    .andThen(() => ResultAsync.fromPromise(
-      readdir(BUNDLED_SCRIPTS_DIR)
-        .then((files) => files.filter((f) => f.endsWith('.ts')))
-        .then((tsFiles) =>
-          Promise.all(
-            tsFiles.map((file) =>
-              cp(join(BUNDLED_SCRIPTS_DIR, file), join(scriptsDir, file))
-                .then(() => true as const)
-                .catch(() => false as const),
-            ),
-          ).then((results) => results.filter(Boolean).length),
-        ),
-      (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
-    ))
-    .map((copied) => ({ ...ctx, filesCreated: ctx.filesCreated + copied }))
+  return release
+    .andThen((r) => {
+      const asset = r.assets.find((a) => a.name === 'faber-templates.zip')
+      return asset
+        ? ok(asset)
+        : err<never, InitError>({ tag: 'download', message: 'faber-templates.zip not found in latest release' })
+    })
+    .andThen((asset) =>
+      new ResultAsync(
+        downloadAsset(asset.browserDownloadUrl, tmpZip).then((r) => r.mapErr(templateErrToInit)),
+      ),
+    )
+    .andThen(() =>
+      new ResultAsync(
+        extractZip(tmpZip, faberDir).then((r) => r.mapErr(templateErrToInit)),
+      ),
+    )
+    .map((files) => {
+      unlink(tmpZip).catch(() => undefined)
+      return { ...ctx, filesCreated: ctx.filesCreated + files.length }
+    })
 }
 
 const copyVscodeSettings = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
   const vscodeDir = join(ctx.opts.projectPath, '.vscode')
-  const src = join(BUNDLED_TEMPLATES_DIR, 'vscode-settings.json')
+  const src = join(ctx.opts.projectPath, '.faber', 'templates', 'vscode-settings.json')
 
   return wrap(() => mkdir(vscodeDir, { recursive: true }))
     .andThen(() => ResultAsync.fromPromise(
@@ -140,14 +156,14 @@ const copyVscodeSettings = (ctx: InitContext): ResultAsync<InitContext, InitErro
       (e) => ({ tag: 'fs' as const, message: e instanceof Error ? e.message : String(e) }),
     ))
     .map(() => ({ ...ctx, filesCreated: ctx.filesCreated + 1 }))
-    .orElse(() => okAsync(ctx)) // skip silently if template missing
+    .orElse(() => okAsync(ctx))
 }
 
 const renderAgentCommands = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
   const format = ctx.opts.ai ? AGENT_FORMATS.get(ctx.opts.ai) : undefined
   if (!format) return okAsync(ctx)
 
-  const commandsSourceDir = join(BUNDLED_TEMPLATES_DIR, 'commands')
+  const commandsSourceDir = join(ctx.opts.projectPath, '.faber', 'templates', 'commands')
   const cmdDir = join(ctx.opts.projectPath, format.dir)
 
   return wrap(() => mkdir(cmdDir, { recursive: true }))
@@ -189,8 +205,7 @@ export const runInit = (opts: RunInitOptions): ResultAsync<InitResult, InitError
 
   return okAsync(seed)
     .andThen(createProjectDir)
-    .andThen(copyTemplates)
-    .andThen(copyScripts)
+    .andThen(downloadAndExtractTemplates)
     .andThen(copyVscodeSettings)
     .andThen(renderAgentCommands)
     .andThen(initGit)

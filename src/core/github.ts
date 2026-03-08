@@ -27,8 +27,7 @@ interface FetchOptions {
   readonly repo?: string
 }
 
-// TODO: update when faber repository is finalized
-const DEFAULT_OWNER = 'faber-dev'
+const DEFAULT_OWNER = 'AGrigoriev77'
 const DEFAULT_REPO = 'faber'
 
 export const resolveGithubToken = (explicit: string | undefined): string | null => {
