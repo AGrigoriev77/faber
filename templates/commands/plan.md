@@ -92,3 +92,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - Use absolute paths
 - ERROR on gate failures or unresolved clarifications
+
+## Next steps
+
+After plan.md is complete, tell the user:
+
+> Next: Run `/faber.tasks` to generate tasks.md → then `/faber.test` to generate test scaffolding → then `/faber.implement` to execute.
