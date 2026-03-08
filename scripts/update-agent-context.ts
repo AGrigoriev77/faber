@@ -350,7 +350,7 @@ if (import.meta.main) {
 
   const planContent = readFileSync(paths.implPlan, 'utf-8')
   const planData = parsePlanData(planContent)
-  const templatePath = join(paths.repoRoot, '.specify', 'templates', 'agent-file-template.md')
+  const templatePath = join(paths.repoRoot, '.faber', 'templates', 'agent-file-template.md')
 
   log(`=== Updating agent context files for feature ${paths.currentBranch} ===`)
 

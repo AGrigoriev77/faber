@@ -39,7 +39,7 @@ describe('setupPlan', () => {
   it('copies plan template when it exists', () => {
     const featureDir = join(tempDir, 'specs', '001-my-feature')
     const implPlan = join(featureDir, 'plan.md')
-    const templateDir = join(tempDir, '.specify', 'templates')
+    const templateDir = join(tempDir, '.faber', 'templates')
     const templatePath = join(templateDir, 'plan-template.md')
 
     mkdirSync(templateDir, { recursive: true })
@@ -126,7 +126,7 @@ describe('setupPlan', () => {
   it('sets templateCopied to true when template is copied', () => {
     const featureDir = join(tempDir, 'specs', '001-my-feature')
     const implPlan = join(featureDir, 'plan.md')
-    const templateDir = join(tempDir, '.specify', 'templates')
+    const templateDir = join(tempDir, '.faber', 'templates')
 
     mkdirSync(templateDir, { recursive: true })
     writeFileSync(join(templateDir, 'plan-template.md'), '# Template')

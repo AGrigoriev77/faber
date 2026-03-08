@@ -56,7 +56,7 @@ export const formatOutput = (result: SetupPlanResult, json: boolean): string =>
 export const setupPlan = (input: SetupPlanInput): SetupPlanResult => {
   mkdirSync(input.featureDir, { recursive: true })
 
-  const templatePath = join(input.repoRoot, '.specify', 'templates', 'plan-template.md')
+  const templatePath = join(input.repoRoot, '.faber', 'templates', 'plan-template.md')
   const templateExists = existsSync(templatePath)
 
   if (templateExists) {
