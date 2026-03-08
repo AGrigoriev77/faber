@@ -188,3 +188,9 @@ Functor: Auth → Permission
 
 → Phase 3 tasks ordered: Identity models → Auth functor → Commerce models → Integration
 ```
+
+## Next steps
+
+After tasks.md is complete, tell the user:
+
+> Next: Run `/faber.test` to generate test scaffolding from acceptance criteria — tests must be written and FAILING before implementation begins (TDD Gate). Then run `/faber.implement` to execute tasks phase by phase.
