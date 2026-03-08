@@ -2,7 +2,7 @@
 description: Generate an actionable, dependency-ordered tasks.md for the feature based on available design artifacts.
 handoffs:
   - label: Generate Test Scaffolding
-    agent: faber.test
+    agent: faber.tests
     prompt: Generate test scaffolding from spec acceptance criteria
     send: true
   - label: Analyze For Consistency
@@ -193,4 +193,4 @@ Functor: Auth → Permission
 
 After tasks.md is complete, tell the user:
 
-> Next: Run `/faber.test` to generate test scaffolding from acceptance criteria — tests must be written and FAILING before implementation begins (TDD Gate). Then run `/faber.implement` to execute tasks phase by phase.
+> Next: Run `/faber.tests` to generate test scaffolding from acceptance criteria — tests must be written and FAILING before implementation begins (TDD Gate). Then run `/faber.implement` to execute tasks phase by phase.

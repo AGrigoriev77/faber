@@ -97,4 +97,4 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 After plan.md is complete, tell the user:
 
-> Next: Run `/faber.tasks` to generate tasks.md → then `/faber.test` to generate test scaffolding → then `/faber.implement` to execute.
+> Next: Run `/faber.tasks` to generate tasks.md → then `/faber.tests` to generate test scaffolding → then `/faber.implement` to execute.

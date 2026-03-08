@@ -34,6 +34,7 @@ export interface RunInitOptions {
   readonly ai: string
   readonly noGit: boolean
   readonly aiSkills: boolean
+  readonly localTemplatesZip?: string  // bypass GitHub download (for testing/dev)
 }
 
 export interface InitResult {
@@ -113,8 +114,18 @@ const wrap = (fn: () => Promise<unknown>): ResultAsync<void, InitError> =>
 const createProjectDir = (ctx: InitContext): ResultAsync<InitContext, InitError> =>
   wrap(() => mkdir(ctx.opts.projectPath, { recursive: true })).map(() => ctx)
 
+const extractTemplatesFromZip = (zipPath: string, faberDir: string, ctx: InitContext): ResultAsync<InitContext, InitError> =>
+  new ResultAsync(
+    extractZip(zipPath, faberDir).then((r) => r.mapErr(templateErrToInit)),
+  ).map((files) => ({ ...ctx, filesCreated: ctx.filesCreated + files.length }))
+
 const downloadAndExtractTemplates = (ctx: InitContext): ResultAsync<InitContext, InitError> => {
   const faberDir = join(ctx.opts.projectPath, '.faber')
+
+  if (ctx.opts.localTemplatesZip) {
+    return extractTemplatesFromZip(ctx.opts.localTemplatesZip, faberDir, ctx)
+  }
+
   const tmpZip = join(tmpdir(), `faber-templates-${Date.now()}.zip`)
 
   const release = new ResultAsync(
@@ -133,14 +144,10 @@ const downloadAndExtractTemplates = (ctx: InitContext): ResultAsync<InitContext,
         downloadAsset(asset.browserDownloadUrl, tmpZip).then((r) => r.mapErr(templateErrToInit)),
       ),
     )
-    .andThen(() =>
-      new ResultAsync(
-        extractZip(tmpZip, faberDir).then((r) => r.mapErr(templateErrToInit)),
-      ),
-    )
-    .map((files) => {
+    .andThen(() => extractTemplatesFromZip(tmpZip, faberDir, ctx))
+    .map((result) => {
       unlink(tmpZip).catch(() => undefined)
-      return { ...ctx, filesCreated: ctx.filesCreated + files.length }
+      return result
     })
 }
 

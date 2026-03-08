@@ -53,7 +53,7 @@ export const EXPECTED_COMMANDS: ReadonlyArray<string> = [
   'specify',
   'tasks',
   'taskstoissues',
-  'test',
+  'tests',
 ]
 
 // --- Formatting (pure) ---

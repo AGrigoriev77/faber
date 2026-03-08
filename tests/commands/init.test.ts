@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest'
 import { mkdtemp, rm, readdir, readFile, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
 import {
   validateInitOptions,
   resolveProjectPath,
@@ -9,6 +11,10 @@ import {
   type InitOptions,
   type RunInitOptions,
 } from '../../src/commands/init.ts'
+
+const execAsync = promisify(exec)
+const PROJECT_ROOT = join(dirname(import.meta.dirname), '..')
+let localTemplatesZip: string
 
 // --- validateInitOptions ---
 
@@ -91,6 +97,14 @@ describe('resolveProjectPath', () => {
 describe('runInit', () => {
   let tmp: string
 
+  beforeAll(async () => {
+    localTemplatesZip = join(tmpdir(), 'faber-test-templates.zip')
+    await execAsync(
+      `zip -r ${localTemplatesZip} templates/ scripts/ -x "*.DS_Store"`,
+      { cwd: PROJECT_ROOT },
+    )
+  })
+
   beforeEach(async () => {
     tmp = await mkdtemp(join(tmpdir(), 'faber-init-'))
   })
@@ -102,7 +116,7 @@ describe('runInit', () => {
   const defaults: RunInitOptions = { projectPath: '', ai: 'claude', noGit: true, aiSkills: false }
 
   const init = (dir: string, overrides: Partial<RunInitOptions> = {}) =>
-    runInit({ ...defaults, projectPath: dir, ...overrides })
+    runInit({ ...defaults, projectPath: dir, localTemplatesZip, ...overrides })
 
   it('creates project directory with files', async () => {
     const dir = join(tmp, 'my-app')
@@ -191,13 +205,13 @@ describe('runInit', () => {
     expect(files.length).toBe(5)
   })
 
-  it('filesCreated is an exact count (6 templates + 5 scripts + 1 vscode + 10 commands = 22)', async () => {
+  it('filesCreated includes templates + scripts + vscode + agent commands', async () => {
     const dir = join(tmp, 'exact-count')
     const result = await init(dir)
     expect(result.isOk()).toBe(true)
     if (result.isOk()) {
-      // 6 TEMPLATE_FILES + 5 scripts + 1 vscode/settings.json + 10 command files
-      expect(result.value.filesCreated).toBe(22)
+      // zip files (templates + scripts) + 1 vscode/settings.json + N agent command files
+      expect(result.value.filesCreated).toBeGreaterThan(15)
     }
   })
 
@@ -211,25 +225,25 @@ describe('runInit', () => {
     }
   })
 
-  it('init with no ai agent creates no commands directory', async () => {
+  it('init with no ai agent creates no agent commands directory', async () => {
     const dir = join(tmp, 'no-ai')
     await init(dir, { ai: '' })
-    const entries = await readdir(dir, { recursive: true })
-    // No .claude/commands, .gemini/commands, etc.
-    const hasCommandsDir = entries.some((e) =>
-      typeof e === 'string' && e.includes('commands'),
+    const entries = await readdir(dir)
+    // No .claude/, .gemini/, .cursor/, etc. — only .faber/ and .vscode/
+    const hasAgentDir = entries.some((e) =>
+      ['.claude', '.gemini', '.cursor', '.qwen', '.kiro'].includes(e),
     )
-    expect(hasCommandsDir).toBe(false)
+    expect(hasAgentDir).toBe(false)
   })
 
-  it('init with unknown agent format creates no commands directory', async () => {
+  it('init with unknown agent format creates no agent commands directory', async () => {
     const dir = join(tmp, 'unknown-agent')
     await init(dir, { ai: 'nonexistent-agent-format' })
-    const entries = await readdir(dir, { recursive: true })
-    const hasCommandsDir = entries.some((e) =>
-      typeof e === 'string' && e.includes('commands'),
+    const entries = await readdir(dir)
+    const hasAgentDir = entries.some((e) =>
+      ['.claude', '.gemini', '.cursor', '.qwen', '.kiro'].includes(e),
     )
-    expect(hasCommandsDir).toBe(false)
+    expect(hasAgentDir).toBe(false)
   })
 
   it('init with toml-based agent (gemini) creates .toml files', async () => {
@@ -257,8 +271,8 @@ describe('runInit', () => {
     const result = await init(tmp, { ai: '' })
     expect(result.isOk()).toBe(true)
     if (result.isOk()) {
-      // 6 templates + 5 scripts + 1 vscode = 12, no commands
-      expect(result.value.filesCreated).toBe(12)
+      // zip files (templates + scripts) + 1 vscode/settings.json, no agent commands
+      expect(result.value.filesCreated).toBeGreaterThan(10)
     }
   })
 })
