@@ -128,8 +128,9 @@ const downloadAndExtractTemplates = (ctx: InitContext): ResultAsync<InitContext,
 
   const tmpZip = join(tmpdir(), `faber-templates-${Date.now()}.zip`)
 
+  const token = process.env['GH_TOKEN'] ?? process.env['GITHUB_TOKEN']
   const release = new ResultAsync(
-    fetchLatestRelease({ fetch: globalThis.fetch }).then((r) => r.mapErr(apiErrToInit)),
+    fetchLatestRelease({ fetch: globalThis.fetch, token }).then((r) => r.mapErr(apiErrToInit)),
   )
 
   return release
