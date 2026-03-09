@@ -15,6 +15,7 @@ import { checkTool } from './utils/git.ts'
 import { AGENT_FORMATS } from './extensions/registrar.ts'
 import { exists } from './utils/fs.ts'
 import { join } from 'node:path'
+import { runUpgrade } from './commands/upgrade.ts'
 import {
   runExtensionList,
   runExtensionSearch,
@@ -144,6 +145,31 @@ export const createProgram = (): Command => {
     .action(async () => {
       // TODO: fetch latest release version from GitHub
       console.log(formatVersionInfo(VERSION, null))
+    })
+
+  // --- upgrade ---
+  program
+    .command('upgrade')
+    .description('Upgrade .faber templates and scripts to the latest release')
+    .option('--github-token <token>', 'GitHub token for API requests')
+    .action(async (opts) => {
+      console.log(formatSuccess('Checking for latest faber release...'))
+
+      const result = await runUpgrade({
+        projectPath: process.cwd(),
+        githubToken: opts.githubToken,
+      })
+
+      result.match(
+        (meta) => {
+          console.log(formatSuccess(`Updated ${meta.filesUpdated} files from release ${meta.release}`))
+          console.log(formatSuccess('Done! Run "faber check" to verify your setup.'))
+        },
+        (error) => {
+          console.error(formatError(error.message, error.tag))
+          process.exit(1)
+        },
+      )
     })
 
   // --- extension group ---
