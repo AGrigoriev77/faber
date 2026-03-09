@@ -19,6 +19,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
+> ⚠️ **NEVER run `setup-plan.ts`** — it is exclusively for `faber.plan` and will silently overwrite plan.md.
+
 This command generates test scaffolding **before any implementation code exists**. Tests are written first (TDD red phase). The generated tests should fail until implementation is complete.
 
 1. **Setup**: Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute.

@@ -27,6 +27,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
+> ⚠️ **NEVER run `setup-plan.ts`** — it is exclusively for `faber.plan` and will silently overwrite plan.md.
+
 1. **Setup**: Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Load design documents**: Read from FEATURE_DIR:
