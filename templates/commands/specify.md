@@ -49,9 +49,10 @@ Given that feature description, do this:
       ```
 
    b. Find the highest feature number **globally across ALL features** (not just the current short-name):
-      - Remote branches: `git ls-remote --heads origin | grep -oP '(?<=refs/heads/)\d+'`
-      - Local branches: `git branch | grep -oP '^\*?\s*\K\d+'`
+      - Remote branches: `git ls-remote --heads origin | sed 's|.*refs/heads/||' | grep -oE '^[0-9]+'`
+      - Local branches: `git branch | sed 's/^\*[[:space:]]*//' | grep -oE '^[0-9]+'`
       - Specs directories: Extract leading numbers from ALL directories in `specs/`
+      - Note: use `-oE` (POSIX extended) + `sed`, never `-oP` (GNU/Perl) — macOS grep does not support `-P`
 
    c. Determine the next available number:
       - Extract all numbers from all three sources across ALL feature branches and specs
