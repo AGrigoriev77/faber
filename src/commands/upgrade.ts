@@ -67,7 +67,7 @@ export const runUpgrade = (opts: UpgradeOptions): ResultAsync<UpgradeResult, Upg
     .andThen((release) => {
       const asset = release.assets.find((a) => a.name === 'faber-templates.zip')
       return asset
-        ? okAsync({ url: asset.browserDownloadUrl, tag: release.tag })
+        ? okAsync({ url: asset.browserDownloadUrl, tag: release.tagName })
         : errAsync<{ url: string; tag: string }, UpgradeError>(
             { tag: 'download', message: 'faber-templates.zip not found in latest release' },
           )

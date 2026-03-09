@@ -27,7 +27,7 @@ import {
 } from './commands/extension/index.ts'
 import { emptyRegistry } from './extensions/registry.ts'
 
-const VERSION = '0.2.0'
+import { version as VERSION } from '../package.json'
 
 const agentChoices = [...AGENTS.keys()].join(', ')
 
