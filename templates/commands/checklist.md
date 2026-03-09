@@ -33,9 +33,11 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+> **Before starting**: Read this file's YAML frontmatter. `{SCRIPT}` = the exact value of `scripts.sh`. Run it as written — do not guess the runtime or file extension.
+
 ## Execution Steps
 
-> ⚠️ **NEVER run `setup-plan.ts`** — it is exclusively for `faber.plan` and will silently overwrite plan.md.
+> ⚠️ Run only `{SCRIPT}` (`check-prerequisites.ts`). Running `setup-plan.ts` instead will silently reset plan.md to an empty template, destroying all planning work.
 
 1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS list.
    - All file paths must be absolute.

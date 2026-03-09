@@ -20,6 +20,8 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+> **Before starting**: Read this file's YAML frontmatter. `{SCRIPT}` = the exact value of `scripts.sh`. Run it as written — do not guess the runtime or file extension.
+
 ## Outline
 
 The text the user typed after `/faber.faber` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `{ARGS}` appears literally below. Do not ask the user to repeat it unless they provided an empty command.

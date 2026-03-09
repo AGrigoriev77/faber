@@ -17,9 +17,11 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+> **Before starting**: Read this file's YAML frontmatter. `{SCRIPT}` = the exact value of `scripts.sh`. Run it as written — do not guess the runtime or file extension.
+
 ## Outline
 
-> ⚠️ **NEVER run `setup-plan.ts`** — it is exclusively for `faber.plan` and will silently overwrite plan.md.
+> ⚠️ Run only `{SCRIPT}` (`check-prerequisites.ts`). Running `setup-plan.ts` instead will silently reset plan.md to an empty template, destroying all planning work.
 
 This command generates test scaffolding **before any implementation code exists**. Tests are written first (TDD red phase). The generated tests should fail until implementation is complete.
 

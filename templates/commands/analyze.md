@@ -22,9 +22,11 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 **Constitution Authority**: The project constitution (`/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/faber.analyze`.
 
+> **Before starting**: Read this file's YAML frontmatter. `{SCRIPT}` = the exact value of `scripts.sh`. Run it as written — do not guess the runtime or file extension.
+
 ## Execution Steps
 
-> ⚠️ **NEVER run `setup-plan.ts`** — it is exclusively for `faber.plan` and will silently overwrite plan.md.
+> ⚠️ Run only `{SCRIPT}` (`check-prerequisites.ts`). Running `setup-plan.ts` instead will silently reset plan.md to an empty template, destroying all planning work.
 
 ### 1. Initialize Analysis Context
 
