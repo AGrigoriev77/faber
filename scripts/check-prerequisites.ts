@@ -151,6 +151,9 @@ if (import.meta.main) {
   if (flags.json) {
     const payload = {
       FEATURE_DIR: paths.featureDir,
+      FEATURE_SPEC: paths.featureSpec,
+      IMPL_PLAN: paths.implPlan,
+      TASKS: paths.tasks,
       AVAILABLE_DOCS: availableDocs,
     }
     process.stdout.write(JSON.stringify(payload) + '\n')

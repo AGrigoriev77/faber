@@ -98,6 +98,29 @@ describe('setupPlan', () => {
     expect(readFileSync(existingFile, 'utf-8')).toBe('keep me')
   })
 
+  it('does not overwrite existing plan.md', () => {
+    const featureDir = join(tempDir, 'specs', '001-my-feature')
+    const implPlan = join(featureDir, 'plan.md')
+    const templateDir = join(tempDir, '.faber', 'templates')
+
+    mkdirSync(featureDir, { recursive: true })
+    mkdirSync(templateDir, { recursive: true })
+    writeFileSync(implPlan, '# Existing Plan\n\nDo not overwrite me.')
+    writeFileSync(join(templateDir, 'plan-template.md'), '# Template')
+
+    const result = setupPlan({
+      repoRoot: tempDir,
+      featureDir,
+      featureSpec: join(featureDir, 'spec.md'),
+      implPlan,
+      currentBranch: '001-my-feature',
+      hasGit: true,
+    })
+
+    expect(readFileSync(implPlan, 'utf-8')).toBe('# Existing Plan\n\nDo not overwrite me.')
+    expect(result.templateCopied).toBe(false)
+  })
+
   it('returns correct paths in result', () => {
     const featureDir = join(tempDir, 'specs', '001-my-feature')
     const implPlan = join(featureDir, 'plan.md')

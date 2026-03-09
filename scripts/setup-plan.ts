@@ -59,10 +59,14 @@ export const setupPlan = (input: SetupPlanInput): SetupPlanResult => {
   const templatePath = join(input.repoRoot, '.faber', 'templates', 'plan-template.md')
   const templateExists = existsSync(templatePath)
 
-  if (templateExists) {
-    copyFileSync(templatePath, input.implPlan)
-  } else {
-    writeFileSync(input.implPlan, '')
+  const planAlreadyExists = existsSync(input.implPlan)
+
+  if (!planAlreadyExists) {
+    if (templateExists) {
+      copyFileSync(templatePath, input.implPlan)
+    } else {
+      writeFileSync(input.implPlan, '')
+    }
   }
 
   return {
@@ -72,7 +76,7 @@ export const setupPlan = (input: SetupPlanInput): SetupPlanResult => {
     specsDir: input.featureDir,
     branch: input.currentBranch,
     hasGit: input.hasGit,
-    templateCopied: templateExists,
+    templateCopied: !planAlreadyExists && templateExists,
   }
 }
 
